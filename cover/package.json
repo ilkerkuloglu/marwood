@@ -1,0 +1,11 @@
+{
+  "name": "marwood-cover",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "jspdf": "^2.5.2",
+    "opentype.js": "^1.3.4",
+    "playwright-core": "^1.64.0",
+    "svg2pdf.js": "^2.2.4"
+  }
+}
