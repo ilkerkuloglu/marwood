@@ -1,0 +1,12 @@
+{
+  "name": "marwood-animation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "motion": "^14.0.0",
+    "playwright-core": "^1.64.0"
+  }
+}
