@@ -16,7 +16,6 @@ const INK = "#000", PAPER = "#fff";
 
 // ── iso projection (world in cm, screen in pt) ─────────────────────────────
 const S = 0.40;                 // pt per cm on the cover
-const PRODUCT_NATIVE = 0.55;    // pt per cm of the catalog's isometric drawings
 const C = Math.cos(Math.PI / 6);
 let OX = 350, OY = 425;         // screen position of world origin
 const P = (x, y, z = 0) => [OX + (x - y) * C * S, OY + (x + y) * 0.5 * S - z * S];
@@ -61,23 +60,66 @@ function loadAsset(file) {
   return { vb, body };
 }
 
+// The catalog draws its products at different scales (most at 0.55 pt/cm, some
+// much smaller or larger), so every product gets its own scale, derived from
+// its dimension label in the isometric files: k = drawing height /
+// (H + iso depth of the footprint). `foot` (cm) is how far the footprint centre
+// sits above the drawing's lowest point: (L + D) / 4, or Ø · 0.354 for rounds.
+const box = (L, D, H, k) => ({ k, foot: (L + D) / 4, H });
+const round = (d, H, k) => ({ k, foot: d * 0.354, H });
+const PRODUCTS = {
+  DOSEME_1_Glory_Mng_Grey_Black_: box(75, 72, 120, 0.55),     // seat ≈ 50
+  DOSEME_9_Jun_Seminar_Grey_Black_: box(61, 59, 93, 0.55),    // seat ≈ 47
+  DOSEME_83_Lumo: box(80, 82, 82, 0.55),
+  DOSEME_117_Joker_Lng: box(80, 73, 72, 0.327),
+  DOSEME_146_Punto_P_70: box(70, 68, 38, 0.55),
+  DOSEME_164_Origo_R_60H45: round(60, 45, 0.405),
+  DOSEME_165_Origo_R_80H45: round(80, 45, 0.41),
+  DOSEME_175_Pile_Pouf__50H_44: round(50, 44, 0.65),
+  PANEL_506_Pile__70H45: round(70, 45, 0.66),
+  DOSEME_242_Avion: round(40, 168, 0.585),
+  DOSEME_239_Cliff_Small: box(65, 45, 140, 0.55),
+  DOSEME_240_Cliff_Middle: box(155, 42, 142, 0.475),
+  DOSEME_241_Cliff_Height: box(100, 42, 180, 0.545),
+  PANEL_269_Loft_T: box(240, 120, 77, 0.30),
+  DOSEME_238_Gowall_Tv: box(168, 34, 184, 0.55),
+};
+// Characters: height of the drawing in real cm (standing ≈ 175, seated figures
+// from feet to head top) and, for seated poses, the seat point as a fraction of
+// the drawing's box so they can be put on a chair or pouf seat.
+const CHARS = {
+  "narsist_stand.svg": { hcm: 175 },
+  "aktivist_write.svg": { hcm: 158, seat: [0.12, 0.564] },
+  "adhd_coffee.svg": { hcm: 110, seat: [0.42, 0.86] },
+  "cat_sleep.svg": { hcm: 25 },
+  "sakar_handstand.svg": { hcm: 210, foot: 20 },  // her stool is a Mitte-size cube (40 × 40)
+  "kafein_sofa.svg": { hcm: 184, foot: 60 },      // sofa ≈ 160 × 78, arm ≈ 62 cm
+  "asosyal_rock.svg": { hcm: 210, foot: 30 },
+};
+
 /**
- * Put an asset in the world. Its bottom-centre (or `anchor` fraction of the
- * bbox) lands on the projected world point. Products keep the catalog scale;
- * characters are sized by `h` (pt). `flip` mirrors (swaps the iso axes).
+ * Put an asset in the world at `at` (cm). Products stand with their footprint
+ * centre on the point, at their own catalog scale. Characters stand with their
+ * bottom-centre on it, or with their seat point when `sit` is set (then `at`
+ * is the seat, e.g. [x, y, 47] for a chair). `flip` mirrors (swaps the iso axes).
  */
-function asset(file, { at, h, hcm, scale, ax = 0.5, ay = 1, flip = false, stroke, depth }) {
-  if (hcm) h = hcm * S;
+function asset(file, { at, flip = false, stroke, depth, sit = false }) {
   const a = loadAsset(file);
   const [vx, vy, vw, vh] = a.vb;
-  const isProduct = file.startsWith("products/");
-  const k = scale ?? (isProduct ? S / PRODUCT_NATIVE : h / vh);
+  const id = file.replace(/^products\//, "").replace(/\.svg$/, "");
+  const prod = PRODUCTS[id], ch = CHARS[file];
+  if (!prod && !ch) throw new Error(`no scale for ${file}`);
+  const k = prod ? S / prod.k : ch.hcm * S / vh;
   const [X, Y] = P(...at);
-  let body = a.body;
-  if (isProduct) body = body.replace(/stroke-width="[^"]*"/g, `stroke-width="${((stroke ?? 0.7) / k).toFixed(3)}"`)
-    .replace(/stroke="#[0-9a-fA-F]{3,6}"/g, `stroke="${INK}"`);
+  let body = a.body, ax = 0.5, ay = 1, dy = 0;
+  if (prod) {
+    body = body.replace(/stroke-width="[^"]*"/g, `stroke-width="${((stroke ?? 0.7) / k).toFixed(3)}"`)
+      .replace(/stroke="#[0-9a-fA-F]{3,6}"/g, `stroke="${INK}"`);
+    dy = prod.foot * S;
+  } else if (sit) [ax, ay] = ch.seat;
+  else dy = (ch.foot ?? 0) * S;
   const fx = flip ? -1 : 1;
-  const tx = X - (vx + ax * vw) * k * fx, ty = Y - (vy + ay * vh) * k;
+  const tx = X - (vx + ax * vw) * k * fx, ty = Y + dy - (vy + ay * vh) * k;
   return {
     depth: depth ?? (at[0] + at[1] + at[2] * 0.01),
     svg: `<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${(k * fx).toFixed(5)},${k.toFixed(5)})">${body}</g>`,
@@ -253,13 +295,12 @@ function scene() {
       ({ ox, oy, oz }) => windowOn("back", oy, ox + 170, oz + 85, 150, 105, 3),
     ],
     items: [
-      ["narsist_stand.svg", 40, 210, 0, { hcm: 178 }],
-      [PR("PANEL_269_Loft_T"), 205, 150, 0],
-      [PR("DOSEME_9_Jun_Seminar_Grey_Black_"), 150, 90, 0, { flip: true }],
-      [PR("DOSEME_9_Jun_Seminar_Grey_Black_"), 280, 120, 0, { flip: true }],
-      [PR("DOSEME_1_Glory_Mng_Grey_Black_"), 180, 250, 0, { flip: true }],
-      ["aktivist_write.svg", 190, 248, 2, { hcm: 150, dz: 2 }],
-      [PR("DOSEME_9_Jun_Seminar_Grey_Black_"), 300, 230, 0],
+      [PR("PANEL_269_Loft_T"), 215, 150, 0, { flip: true }],
+      [PR("DOSEME_9_Jun_Seminar_Grey_Black_"), 165, 52, 0],
+      [PR("DOSEME_9_Jun_Seminar_Grey_Black_"), 275, 52, 0],
+      [PR("DOSEME_1_Glory_Mng_Grey_Black_"), 58, 150, 0, { flip: true }],
+      ["aktivist_write.svg", 62, 150, 50, { sit: true, dz: 5 }],
+      ["narsist_stand.svg", 40, 262, 0],
     ],
   };
   // R2 middle left: POUFS — the break room
@@ -273,36 +314,36 @@ function scene() {
       ({ ox, oy, oz }) => windowOn("back", oy, ox + 40, oz + 85, 120, 105, 2),
     ],
     items: [
-      [PR("DOSEME_175_Pile_Pouf__50H_44"), 75, 75, 0],
-      ["cat_sleep.svg", 73, 71, 44, { hcm: 52, dz: 10 }],
-      ["sakar_handstand.svg", 205, 95, 0, { hcm: 251 }],
-      [PR("DOSEME_165_Origo_R_80H45"), 60, 200, 0],
-      ["adhd_coffee.svg", 135, 245, 0, { hcm: 150 }],
-      [PR("PANEL_506_Pile__70H45"), 245, 205, 0],
-      [PR("DOSEME_164_Origo_R_60H45"), 320, 250, 0],
+      [PR("DOSEME_175_Pile_Pouf__50H_44"), 70, 70, 0],
+      ["cat_sleep.svg", 70, 70, 44, { dz: 10 }],
+      ["sakar_handstand.svg", 205, 90, 0],
+      [PR("DOSEME_165_Origo_R_80H45"), 85, 200, 0],
+      ["adhd_coffee.svg", 85, 200, 45, { sit: true, dz: 5 }],
+      [PR("PANEL_506_Pile__70H45"), 225, 205, 0],
+      [PR("DOSEME_164_Origo_R_60H45"), 300, 140, 0],
+      [PR("DOSEME_164_Origo_R_60H45"), 305, 240, 0],
     ],
   };
   // R3 bottom right: SOFAS & ARMCHAIRS lounge + open ACCESSORIES deck in front
   const R3 = {
     o: [410, 410, 0], size: [360, 520],
     front: [[0, 360, SWATCH.gold]], right: [[0, 300, SWATCH.plum], [300, 520, SWATCH.gold]],
-    walls: { left: [0, 140], back: [0, 360] },
+    walls: { left: [0, 250], back: [0, 360] },
     labels: [["front", "ACCESSORIES", 14], ["right", "SOFAS & ARMCHAIRS", 232]],
     decor: [
-      ({ ox, oy, oz }) => swatchChart("back", oy, ox + 18, oz + 105, 100, 82),
-      ({ ox, oy, oz }) => posterOn("left", ox, oy + 25, oz + 105, 90, 80, SWATCH.plum),
-      ({ ox, oy, oz }) => windowOn("back", oy, ox + 205, oz + 85, 135, 105, 3),
+      ({ ox, oy, oz }) => swatchChart("back", oy, ox + 115, oz + 110, 95, 78),
+      ({ ox, oy, oz }) => posterOn("left", ox, oy + 70, oz + 115, 100, 85, SWATCH.plum),
+      ({ ox, oy, oz }) => windowOn("back", oy, ox + 235, oz + 85, 110, 105, 2),
       ({ ox, oy, oz }) => line(P(ox, oy + 300, oz), P(ox + 360, oy + 300, oz), `stroke="${INK}" stroke-width="${MID}"`),
     ],
     items: [
-      ["kafein_sofa.svg", 150, 130, 0, { hcm: 240 }],
-      [PR("DOSEME_117_Joker_Lng"), 300, 80, 0],
-      [PR("DOSEME_146_Punto_P_70"), 215, 235, 0],
-      [PR("DOSEME_83_Lumo"), 315, 200, 0],
-      ["asosyal_rock.svg", 95, 405, 0, { hcm: 320 }],
-      [PR("DOSEME_240_Cliff_Middle"), 225, 455, 0],
-      [PR("DOSEME_239_Cliff_Small"), 40, 490, 0],
-      [PR("DOSEME_242_Avion"), 335, 470, 0],
+      ["kafein_sofa.svg", 48, 125, 0],
+      [PR("DOSEME_146_Punto_P_70"), 140, 150, 0],
+      [PR("DOSEME_117_Joker_Lng"), 200, 45, 0],
+      [PR("DOSEME_83_Lumo"), 292, 150, 0],
+      ["asosyal_rock.svg", 75, 445, 0],
+      [PR("DOSEME_240_Cliff_Middle"), 250, 410, 0],
+      [PR("DOSEME_242_Avion"), 330, 335, 0],
     ],
   };
   const parts = [room(R1)];
@@ -310,7 +351,7 @@ function scene() {
   parts.push(stairsY(250, 320, 300, 436, Z1, Z2, 8));
   parts.push(room(R2));
   // ladder from the lounge up to the break room's edge
-  parts.push(ladder(470, 0, 334, Z2, 572));
+  parts.push(ladder(470, 0, 334, Z2, 682));
   parts.push(room(R3));
   return parts.join("\n");
 }
