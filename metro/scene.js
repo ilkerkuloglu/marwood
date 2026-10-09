@@ -171,10 +171,10 @@ function perfume() {
   const palm = `<polygon points="18668,7432 18700,7392 18745,7338 18790,7322 18802,7398 18762,7442 18700,7470 18648,7484" fill="#fff"/>`;
   // one smooth arm out of the sleeve, down past the elbow and up to the hand;
   // it ends flat inside the palm, so the hand covers the joint
-  const NW = [13182, 7387], NC = [2 * NARM.E[0] - (NARM.S[0] + NW[0]) / 2, 2 * NARM.E[1] - (NARM.S[1] + NW[1]) / 2];
-  const armd = bentArm(NARM.S, NC, NW, 30, 29, 24);
-  return `<g id="narm"><path d="${armd}" fill="${C.ink}" stroke="${C.ink}" stroke-width="12" stroke-linejoin="round"/>` +
-    `<path d="${armd}" fill="#fff"/>` +
+  const NW = [13184, 7384], up = limbPath(NARM.S, NARM.E, 31, 29), fore = limbPath(NARM.E, NW, 29, 24);
+  const bones = `<path d="${up}"/><path d="${fore}"/><circle cx="${NARM.E[0]}" cy="${NARM.E[1]}" r="29"/>`;
+  return `<g id="narm"><g fill="${C.ink}" stroke="${C.ink}" stroke-width="12" stroke-linejoin="round">${bones}</g>` +
+    `<g fill="#fff">${bones}</g>` +
     `<g transform="matrix(${gripM.map((v) => +v.toFixed(5)).join(" ")})">${bottle}${palm}<clipPath id="gripclip"><polygon points="18600,7280 18900,7280 18900,7540 18684,7540 18684,7464 18600,7464"/></clipPath><g id="L_grip" clip-path="url(#gripclip)">${ASSETS.grip_hand.body}</g></g>` +
     `<g id="L_narsist_cuff">${ASSETS.narsist_cuff.body}</g></g>`;
 }
