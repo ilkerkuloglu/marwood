@@ -41,13 +41,6 @@ const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147
 const S = (w = 7) => `stroke="${C.ink}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
 const ring = (cx, cy, r, attrs) => `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" ${attrs}/>`;
 const star4 = (r) => { const k = r * 0.22; return `M0,${-r} Q${k},${-k} ${r},0 Q${k},${k} 0,${r} Q${-k},${k} ${-r},0 Q${-k},${-k} 0,${-r}Z`; };
-// the Marwood motif: two circles and a pill rotated −32°, centred, width w
-function motif(w, color, attrs = "") {
-  const k = w / 100.9, r = 9.9 * k;
-  const cx0 = -40.55 * k, cx1 = -16.55 * k, pc = 24 * k, L = 50 * k;
-  return `<g ${attrs}><circle cx="${f(cx0)}" cy="0" r="${f(r)}" fill="${color}"/><circle cx="${f(cx1)}" cy="0" r="${f(r)}" fill="${color}"/>` +
-    `<rect x="${f(pc - L / 2)}" y="${f(-r)}" width="${f(L)}" height="${f(2 * r)}" rx="${f(r)}" fill="${color}" transform="rotate(-32 ${f(pc)} 0)"/></g>`;
-}
 // eyelids: a white disc and a closed-eye stroke laid over an open eye
 function lid(id, cx, cy, r, sw = 6) {
   return `<g id="${id}" opacity="0"><circle cx="${cx}" cy="${cy}" r="${r + 6}" fill="#fff"/>` +
@@ -115,38 +108,43 @@ function windowView(pane, i, extra = "") {
     `<g id="far${i}">${cityStrip(pane, "far")}</g><g id="near${i}">${cityStrip(pane, "near")}</g>${extra}</g>`;
 }
 
-// Narsist: a perfume bottle held in his folded arms (Palette Lab); his
-// forearms are redrawn over it so it sits behind them
-const BOTTLE = { x: 13128, y: 7380 };
+// Narsist: his right arm is redrawn raised, holding a perfume bottle up to
+// his neck (Palette Lab); the sleeve cuff goes over the upper arm
+const NARM = { S: [13374, 7318], E: [13478, 7436], H: [13436, 7128] };
+const BOTTLE = { x: 13430, y: 7060 }; // centre of a squat perfume flacon
 function perfume() {
   const { x, y } = BOTTLE;
-  return `<g id="bottle"><rect x="${x - 62}" y="${y}" width="124" height="196" rx="26" fill="#fff" ${S(8)}/>` +
-    `<rect x="${x - 50}" y="${y + 52}" width="100" height="132" rx="16" fill="${C.gold}"/>` +
-    `<path d="M${x - 36},${y + 26} V${y + 150}" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity=".9"/>` +
-    `<g transform="translate(${x + 6} ${y + 108})">${motif(62, C.navy)}</g>` +
-    `<rect x="${x - 22}" y="${y - 30}" width="44" height="34" rx="6" fill="#fff" ${S(8)}/>` +
-    `<rect x="${x - 30}" y="${y - 78}" width="60" height="52" rx="10" fill="${C.ink}"/>` +
-    `<rect x="${x - 46}" y="${y - 64}" width="18" height="12" rx="4" fill="${C.ink}"/></g>` +
-    `<g id="L_narsist_arms">${ASSETS.narsist_arms.body}</g>`;
+  const bottle = `<g id="bottle"><rect x="${x - 48}" y="${y - 46}" width="96" height="92" rx="20" fill="#fff" ${S(7)}/>` +
+    `<rect x="${x - 38}" y="${y - 22}" width="76" height="58" rx="12" fill="${C.gold}"/>` +
+    `<path d="M${x - 28},${y - 30} V${y + 20}" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".9"/>` +
+    `<rect x="${x - 14}" y="${y - 62}" width="28" height="18" rx="4" fill="#fff" ${S(6)}/>` +
+    `<g id="cap"><rect x="${x - 20}" y="${y - 96}" width="40" height="36" rx="8" fill="${C.ink}"/>` +
+    `<rect x="${x - 38}" y="${y - 88}" width="20" height="10" rx="3" fill="${C.ink}"/></g></g>`;
+  const hand = `<g id="nhand"><path d="M${x - 54},${y + 2} C${x - 56},${y - 10} ${x + 52},${y - 10} ${x + 54},${y + 2} L${x + 56},${y + 58} C${x + 54},${y + 74} ${x - 52},${y + 74} ${x - 54},${y + 58} Z" fill="#fff" ${S(6)}/>` +
+    `<path d="M${x - 42},${y + 22} H${x + 42} M${x - 44},${y + 42} H${x + 44} M${x - 42},${y + 60} H${x + 40}" fill="none" ${S(5)}/>` +
+    `<path d="M${x - 54},${y + 18} C${x - 74},${y + 12} ${x - 72},${y - 10} ${x - 46},${y - 8}" fill="#fff" ${S(6)}/></g>`;
+  return `<g id="narm"><path d="${limbPath(NARM.S, NARM.E, 33, 33)}" fill="#fff" ${S(6)}/><g id="L_narsist_cuff">${ASSETS.narsist_cuff.body}</g>` +
+    `<path d="${limbPath(NARM.E, NARM.H, 34, 30)}" fill="#fff" ${S(6)}/>${bottle}${hand}</g>`;
 }
-// nozzle tip once the bottle is lifted (translate −46, rotate −8° about the base)
-const NOZZLE = [13060, 7284];
+// the spray: a fine mist from the nozzle across to his neck, then the scent
+// trails up around his face
+const NOZZLE = [13390, 6977];
 const SPRAY = (() => {
   seed = 5;
-  return Array.from({ length: 22 }, (_, k) => {
-    const a = (198 + rnd() * 52) * Math.PI / 180;
-    return { a, d: 130 + rnd() * 240, r: 7 + rnd() * 9, c: [C.gold, C.salmon, C.rose][k % 3], dl: rnd() * 0.12 };
+  return Array.from({ length: 26 }, (_, k) => {
+    const a = (158 + rnd() * 34) * Math.PI / 180;
+    return { a, d: 70 + rnd() * 140, r: 3 + rnd() * 5, c: [C.gold, C.salmon, C.rose][k % 3], dl: rnd() * 0.12 };
   });
 })();
 function spritz() {
-  let s = `<g id="spray">${SPRAY.map((o, k) => `<circle id="sd${k}" r="${f(o.r)}" fill="${o.c}" opacity="0"/>`).join("")}</g>`;
-  const [nx, ny] = NOZZLE;
+  let s = `<g id="mist" opacity="0">${[[13250, 6990, 46], [13212, 7010, 38], [13285, 6972, 30]].map(([x, y, r]) => ring(x, y, r, `fill="${C.gold}" opacity=".22"`)).join("")}</g>`;
+  s += `<g id="spray">${SPRAY.map((o, k) => `<circle id="sd${k}" r="${f(o.r)}" fill="${o.c}" opacity="0"/>`).join("")}</g>`;
   const trails = [
-    `M${nx - 250},${ny - 150} C${nx - 330},${ny - 330} ${nx - 120},${ny - 380} ${nx - 150},${ny - 520} S${nx + 40},${ny - 520} ${nx + 90},${ny - 420}`,
-    `M${nx - 190},${ny - 90} C${nx - 230},${ny - 250} ${nx - 30},${ny - 270} ${nx - 60},${ny - 400} S${nx + 90},${ny - 430} ${nx + 120},${ny - 390}`,
+    "M13140,7010 C13030,6990 12985,6890 12998,6800 S13052,6662 12992,6596",
+    "M13230,6990 C13320,6955 13350,6875 13345,6795 S13300,6676 13352,6606",
   ];
-  s += `<g id="trails">${trails.map((d, k) => `<path id="tr${k}" d="${d}" pathLength="1" fill="none" stroke="${k ? C.salmon : C.gold}" stroke-width="12" stroke-linecap="round" stroke-dasharray="1 1" stroke-dashoffset="1"/>`).join("")}</g>`;
-  const SP = [[12930, 6700, 62, C.gold], [13390, 6660, 52, C.salmon], [13450, 6880, 40, C.gold], [12900, 6930, 44, C.salmon], [13250, 6540, 36, C.gold]];
+  s += `<g id="trails">${trails.map((d, k) => `<path id="tr${k}" d="${d}" pathLength="1" fill="none" stroke="${k ? C.salmon : C.gold}" stroke-width="11" stroke-linecap="round" stroke-dasharray="1 1" stroke-dashoffset="1"/>`).join("")}</g>`;
+  const SP = [[12930, 6700, 58, C.gold], [13470, 6700, 50, C.salmon], [13560, 6930, 38, C.gold], [12900, 6930, 42, C.salmon], [13200, 6560, 34, C.gold]];
   s += `<g id="sparkles">${SP.map(([sx, sy, r, col], i) => `<path id="spk${i}" data-x="${sx}" data-y="${sy}" d="${star4(r)}" transform="scale(0)" fill="${col}" ${S(5)}/>`).join("")}</g>`;
   return s;
 }
@@ -207,7 +205,7 @@ function plate() {
 // Sakar's laptop lid stickers (Souvenir Shop)
 const LID = { x: 19705, y: 7335 };
 const STICKERS = [
-  { x: LID.x - 72, y: LID.y - 44, r: -12, body: `<rect x="-52" y="-24" width="104" height="48" rx="24" fill="${C.salmon}" ${S(5)}/><g transform="translate(4 0)">${motif(78, "#fff")}</g>` },
+  { x: LID.x - 66, y: LID.y - 40, r: -12, body: `<circle r="36" fill="${C.salmon}" ${S(5)}/><circle cx="-12" cy="-8" r="5" fill="${C.ink}"/><circle cx="12" cy="-8" r="5" fill="${C.ink}"/><path d="M-16,8 Q0,24 16,8" fill="none" ${S(5)}/>` },
   { x: LID.x + 78, y: LID.y - 40, r: 14, body: `<path d="${star4(34)}" fill="${C.gold}" ${S(5)}/>` },
   { x: LID.x + 66, y: LID.y + 52, r: -8, body: `<path d="M0,22 C-46,-6 -30,-42 0,-20 C30,-42 46,-6 0,22Z" fill="${C.rose}" ${S(5)}/>` },
 ];
@@ -254,21 +252,27 @@ const TILE_W = 72, TILE_H = 36;
 function nameplate(cx, cy, w = 860, h = 200) {
   return `<g transform="translate(${cx} ${cy})"><rect x="${-w / 2 - 10}" y="${-h / 2 - 10}" width="${w + 20}" height="${h + 20}" rx="34" fill="#fff" ${S(4)}/>` +
     `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="26" fill="${C.navy}"/>` +
-    `<g transform="translate(-293 4)">${motif(140, "#fff")}</g>` +
-    `<text x="-183" y="41" font-size="112" font-weight="700" fill="#fff">Marwood</text></g>`;
+    `<text x="0" y="42" text-anchor="middle" font-size="120" font-weight="700" fill="#fff" letter-spacing="2">Marwood</text></g>`;
 }
+const FLOOR_Y = 1372;
 function stationWall() {
-  // a wide tiled wall with the station name repeated, and the line colours
+  // a wide tiled wall with the station name repeated, the line colours, and
+  // the platform in front of it
   let s = `<defs><pattern id="tiles" patternUnits="userSpaceOnUse" width="${TILE_W}" height="${TILE_H * 2}">` +
     `<rect width="${TILE_W}" height="${TILE_H * 2}" fill="${C.tile}"/>` +
-    `<path d="M0,0.5 H${TILE_W} M0,${TILE_H + 0.5} H${TILE_W} M0.5,0 V${TILE_H} M${TILE_W / 2 + 0.5},${TILE_H} V${TILE_H * 2}" stroke="${C.grout}" stroke-width="2.4"/></pattern></defs>`;
-  s += `<rect x="-6600" y="-200" width="15600" height="1540" fill="url(#tiles)"/>`;
+    `<path d="M0,0.5 H${TILE_W} M0,${TILE_H + 0.5} H${TILE_W} M0.5,0 V${TILE_H} M${TILE_W / 2 + 0.5},${TILE_H} V${TILE_H * 2}" stroke="${C.grout}" stroke-width="2.4"/></pattern>` +
+    `<pattern id="studs" patternUnits="userSpaceOnUse" width="26" height="20"><rect width="26" height="20" fill="${C.gold}"/><circle cx="13" cy="10" r="4.5" fill="#b8892a"/></pattern>` +
+    `<clipPath id="floorclip"><rect x="-6600" y="${FLOOR_Y}" width="15600" height="${1846 - FLOOR_Y}"/></clipPath></defs>`;
+  s += `<rect x="-6600" y="-200" width="15600" height="${FLOOR_Y - 56 + 200}" fill="url(#tiles)"/>`;
   for (const x of [-4260, -1860, 2940, 5340]) s += nameplate(x + 540, 460);
-  // line-colour band and the platform
-  STATIONS.slice(0, 4).forEach((st, i) => { s += `<rect x="-6600" y="${1268 + i * 14}" width="15600" height="14" fill="${st.color}"/>`; });
-  s += `<rect x="-6600" y="1324" width="15600" height="800" fill="#e2dccd"/>` +
-    `<rect x="-6600" y="1324" width="15600" height="6" fill="${C.ink}"/>` +
-    `<rect x="-6600" y="1372" width="15600" height="26" fill="${C.gold}"/>`;
+  STATIONS.slice(0, 4).forEach((st, i) => { s += `<rect x="-6600" y="${FLOOR_Y - 56 + i * 14}" width="15600" height="14" fill="${st.color}"/>`; });
+  // platform floor: tiles in perspective, the tactile safety strip, the edge
+  s += `<rect x="-6600" y="${FLOOR_Y}" width="15600" height="${1846 - FLOOR_Y}" fill="#e6e0d2"/><g clip-path="url(#floorclip)">`;
+  for (const y of [1410, 1462, 1530, 1622]) s += `<path d="M-6600,${y} H9000" stroke="#d3ccbb" stroke-width="3"/>`;
+  for (let k = -40; k <= 40; k++) s += `<path d="M${540 + k * 60},${FLOOR_Y} L${540 + k * 190},1846" stroke="#d3ccbb" stroke-width="3"/>`;
+  s += `</g><rect x="-6600" y="${FLOOR_Y}" width="15600" height="5" fill="${C.ink}"/>`;
+  s += `<rect x="-6600" y="1720" width="15600" height="60" fill="url(#studs)"/>`;
+  s += `<rect x="-6600" y="1840" width="15600" height="8" fill="${C.ink}"/><rect x="-6600" y="1848" width="15600" height="300" fill="#2a2a2a"/>`;
   return s;
 }
 function endCard() {
@@ -281,11 +285,13 @@ function endCard() {
     `<text id="orgatec" x="540" y="866" text-anchor="middle" font-size="56" font-weight="700" fill="${C.ink}" letter-spacing="6">ORGATEC</text></g>`;
   s += `<g id="e4"><text x="540" y="972" text-anchor="middle" font-size="50" font-weight="700" fill="${C.red}">Hall 8.1 · Stand A30–B31</text></g>`;
   s += `<g id="e5"><text x="540" y="1032" text-anchor="middle" font-size="36" font-weight="600" fill="${C.ink}">27–30 October 2026 · Cologne</text></g>`;
-  // bench with the cat, at the bottom of the safe area
-  const a = ASSETS.cat_sit, [vx, vy, vw, vh] = a.vb, cs = 0.27;
-  s += `<g id="e6"><rect x="360" y="1214" width="360" height="26" rx="10" fill="#fff" ${S(5)}/>` +
-    `<path d="M392,1240 V1266 M688,1240 V1266" ${S(7)}/>` +
-    `<g transform="translate(${f(590 - (vx + vw / 2) * cs)} ${f(1220 - (vy + vh) * cs)}) scale(${cs})">${a.body}${lid("lidE", 3474.3, 12736.6, 16)}</g></g>`;
+  // the cat on a Marwood Cage pouf, on the platform
+  const p = ASSETS.cage_pouf, [px, py, pw, ph] = p.vb, ps = 4.5;
+  const pouf = p.body.replace(/stroke-width="[^"]*"/g, `stroke-width="${(4.2 / ps).toFixed(3)}"`).replace(/stroke="#[0-9a-fA-F]{3,6}"/g, `stroke="${C.ink}"`);
+  const a = ASSETS.cat_sit, [vx, vy, vw, vh] = a.vb, cs = 0.38;
+  s += `<g id="e6"><ellipse cx="546" cy="1640" rx="226" ry="24" fill="#d3ccbb"/>` +
+    `<g transform="translate(${f(540 - (px + pw / 2) * ps)} ${f(1632 - (py + ph) * ps)} ) scale(${ps})">${pouf}</g>` +
+    `<g transform="translate(${f(556 - (vx + vw / 2) * cs)} ${f(1458 - (vy + vh) * cs)}) scale(${cs})">${a.body}${lid("lidE", 3474.3, 12736.6, 16)}</g></g>`;
   return s + `</g>`;
 }
 function station() {
@@ -326,7 +332,7 @@ function overlay() {
     const last = i === 4, col = STATIONS[i].color;
     s += `<g id="stop${i}" transform="translate(${stopX(i)} ${MAP.y}) scale(0)">` +
       `<circle id="pr${i}" r="20" fill="none" stroke="${col}" stroke-width="6" opacity="0"/>` +
-      (last ? `<circle r="24" fill="#fff"/>${motif(32, "#000")}`
+      (last ? `<circle r="24" fill="#fff"/><circle r="10" fill="#000"/>`
             : `<circle r="16" fill="#000" stroke="${col}" stroke-width="7"/><circle id="dot${i}" r="9" fill="${col}" opacity="0"/>`) + `</g>`;
     s += `<text id="lab${i}" x="${stopX(i)}" y="${MAP.y + 50}" text-anchor="middle" font-size="${last ? 24 : 20}" font-weight="700" fill="#fff" letter-spacing="1.5" opacity="0">` +
       STATIONS[i].lines.map((l, k) => `<tspan x="${stopX(i)}" dy="${k ? 24 : 0}">${l}</tspan>`).join("") + `</text>`;
@@ -405,12 +411,15 @@ function seek(t) {
   set("station", { transform: `translate(${f(2000 * Math.pow(1 - sb, 2.4))} 0)` });
 
   // ── Narsist: lifts the bottle, sprays, the scent reaches him, he winks
-  const lift = eo(prog(t, 0.05, T.spritz)) * (1 - eio(prog(t, 1.3, 1.8)));
-  set("bottle", { transform: `translate(0 ${f(-46 * lift)}) rotate(${f(-8 * lift)} ${BOTTLE.x} ${BOTTLE.y + 100})` });
+  const lift = eo(prog(t, 0, T.spritz));
+  set("narm", { transform: `translate(${f(6 * (1 - lift))} ${f(26 * (1 - lift))})` });
+  set("cap", { transform: `translate(0 ${f(7 * pulse(t, T.spritz - 0.02, 0.22))})` });
   SPRAY.forEach((o, k) => {
     const p = prog(t, T.spritz + o.dl, T.spritz + o.dl + 0.75), d = o.d * eo(p);
-    set(`sd${k}`, { cx: f(NOZZLE[0] + Math.cos(o.a) * d), cy: f(NOZZLE[1] + Math.sin(o.a) * d - 50 * p), opacity: p > 0 && p < 1 ? f(1 - p * p) : 0 });
+    set(`sd${k}`, { cx: f(NOZZLE[0] + Math.cos(o.a) * d), cy: f(NOZZLE[1] + Math.sin(o.a) * d - 20 * p), opacity: p > 0 && p < 1 ? f(1 - p * p) : 0 });
   });
+  const mi = prog(t, T.spritz + 0.15, T.spritz + 1.0);
+  set("mist", { opacity: f(Math.sin(Math.PI * mi)), transform: `translate(13250 6995) scale(${f(0.6 + 0.6 * eo(mi))}) translate(-13250 -6995)` });
   [0, 1].forEach((k) => {
     const dr = eio(prog(t, T.spritz + 0.25 + k * 0.08, T.spritz + 0.85 + k * 0.08));
     set(`tr${k}`, { "stroke-dashoffset": f(1 - dr), opacity: f(1 - eo(prog(t, 0.95, 1.3))) });
@@ -429,9 +438,14 @@ function seek(t) {
   const hand = [lerp(ARM.H0[0], ARM.H1[0], u) - 40 * Math.sin(Math.PI * u), lerp(ARM.H0[1], ARM.H1[1], u)];
   set("upper", { d: limbPath(ARM.S, E, 33, 30) });
   set("fore", { d: limbPath(E, hand, 30, 26) });
-  set("hand", { transform: `translate(${f(hand[0])} ${f(hand[1])})` });
-  const nudge = 22 * pulse(t, T.bite - 0.08, 0.2); // pushes into the mouth for the bite
-  set("cookie", { transform: `translate(${f(hand[0] + 8 + nudge)} ${f(hand[1] - 48 - nudge * 0.3)})` });
+  // the fist points along the forearm and holds the cookie just beyond it
+  const fl = Math.hypot(hand[0] - E[0], hand[1] - E[1]), dir = [(hand[0] - E[0]) / fl, (hand[1] - E[1]) / fl];
+  const rot = Math.atan2(dir[1], dir[0]) * 180 / Math.PI + 90;
+  set("hand", { transform: `translate(${f(hand[0] + dir[0] * 8)} ${f(hand[1] + dir[1] * 8)}) rotate(${f(rot)})` });
+  let ck = [hand[0] + dir[0] * 62, hand[1] + dir[1] * 62];
+  const nudge = 26 * pulse(t, T.bite - 0.08, 0.2), toM = [MOUTH.x - ck[0], MOUTH.y - ck[1]], ml = Math.hypot(...toM);
+  ck = [ck[0] + toM[0] / ml * nudge, ck[1] + toM[1] / ml * nudge];
+  set("cookie", { transform: `translate(${f(ck[0])} ${f(ck[1])})` });
   set("bite", { opacity: t >= T.bite ? 1 : 0 });
   const chewing = t > T.bite && t < T.bite + 0.85;
   set("chew", { opacity: chewing ? 1 : 0 });
@@ -511,7 +525,7 @@ function seek(t) {
     const pr = lit.concat(i === 4 ? [T.press] : []).map((tt) => prog(t, tt, tt + 0.6)).find((v) => v > 0 && v < 1);
     set(`pr${i}`, { r: f(20 + 34 * (pr ?? 0)), opacity: pr !== undefined ? f(1 - pr) : 0 });
     const base = eo(prog(t, T.line[0] + 0.3 + i * 0.1, T.line[0] + 0.7 + i * 0.1));
-    set(`lab${i}`, { opacity: f(base * (on || i === 4 ? 1 : 0.5)) });
+    set(`lab${i}`, { opacity: f(base) });
   }
   const nb = pulse(t, T.press, 0.45);
   set("nextname", { transform: `translate(${W - MAP.x0 + 24} 466) scale(${f(1 + 0.25 * nb)}) translate(${-(W - MAP.x0 + 24)} -466)` });
@@ -522,7 +536,7 @@ function seek(t) {
     set(id, { opacity: f(p), transform: `translate(0 ${f(36 * (1 - p))})` });
   });
   const ec = Math.max(0, spring(t - T.end - 0.95, 9, 0.4));
-  set("e6", { opacity: ec > 0 ? 1 : 0, transform: `translate(540 1266) scale(${f(ec)}) translate(-540 -1266)` });
+  set("e6", { opacity: ec > 0 ? 1 : 0, transform: `translate(540 1640) scale(${f(ec)}) translate(-540 -1640)` });
   set("lidE", { opacity: [16.2, 17.3].some((b) => t > b && t < b + 0.13) ? 1 : 0 });
 }
 
