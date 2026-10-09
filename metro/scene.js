@@ -121,9 +121,8 @@ function windowView(pane, i, extra = "") {
 // bottle stands nearly upright; the forearm runs across his chest to the
 // elbow at the sleeve, as in her original folded-arms pose
 const GRIP = { Wk: [18660, 7458], k: 1.05, rot: -22 };
-const NARM = { E: [13400, 7310], L: 205 };
-const gripW = (() => { const a = GRIP.rot * Math.PI / 180 + Math.PI * 5 / 180 - Math.PI * 5 / 180; void a;
-  const d = (27 + GRIP.rot) * Math.PI / 180; return [NARM.E[0] - NARM.L * Math.cos(d), NARM.E[1] - NARM.L * Math.sin(d)]; })();
+const NARM = { E: [13338, 7306] };          // elbow, hidden inside the sleeve hem
+const gripW = [13195.8, 7292.1];             // wrist
 // hand frame (Kafein's drawing coordinates) → world
 const gripM = (() => {
   const r = GRIP.rot * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r), k = GRIP.k;
@@ -149,7 +148,7 @@ function perfume() {
     `<g id="cap"><rect x="-23" y="-208" width="46" height="40" rx="8" fill="${C.ink}"/>` +
     `<rect x="-42" y="-200" width="21" height="12" rx="3" fill="${C.ink}"/></g></g></g>`;
   const palm = `<polygon points="18668,7432 18700,7392 18745,7338 18790,7322 18802,7398 18762,7442 18700,7470 18648,7484" fill="#fff"/>`;
-  return `<g id="narm"><path d="${limbPath(NARM.E, gripW, 33, 30)}" fill="#fff" ${S(6)}/>` +
+  return `<g id="narm"><path d="${limbPath(NARM.E, gripW, 27, 29)}" fill="#fff" ${S(6)}/>` +
     `<g transform="matrix(${gripM.map((v) => +v.toFixed(5)).join(" ")})">${bottle}${palm}<clipPath id="gripclip"><polygon points="18600,7280 18900,7280 18900,7540 18684,7540 18684,7464 18600,7464"/></clipPath><g id="L_grip" clip-path="url(#gripclip)">${ASSETS.grip_hand.body}</g></g>` +
     `<g id="L_narsist_cuff">${ASSETS.narsist_cuff.body}</g></g>`;
 }
@@ -190,7 +189,9 @@ function adhdArm() {
   const hand = `<g id="hand"><path d="M-30,-14 C-30,-30 30,-30 32,-14 L34,18 C34,34 -30,34 -32,18 Z" fill="#fff" ${S(5)}/>` +
     `<path d="M-12,-26 V-6 M6,-26 V-6 M22,-24 V-6" fill="none" ${S(4)}/><path d="M-32,4 C-46,-2 -46,-22 -30,-22" fill="#fff" ${S(5)}/></g>`;
   // the cuff sits over the upper arm; the forearm passes in front of it
-  return `<path id="upper" fill="#fff" ${S(5)}/><g id="L_adhd_cuff">${ASSETS.adhd_cuff.body}</g><path id="fore" fill="#fff" ${S(5)}/>${cookie}${hand}`;
+  // drawn as one shape: a thick outline pass under a fill pass, so the elbow has no seam
+  return `<g fill="${C.ink}" stroke="${C.ink}" stroke-width="10" stroke-linejoin="round"><path id="upperO"/><path id="foreO"/></g>` +
+    `<g fill="#fff"><path id="upper"/><path id="fore"/></g><g id="L_adhd_cuff">${ASSETS.adhd_cuff.body}</g>${cookie}${hand}`;
 }
 // two-bone IK, elbow on the outer (left) side
 function ik(Sp, T, L1, L2) {
@@ -315,7 +316,9 @@ function endCard() {
   const p = ASSETS.cage_pouf, [px, py, pw, ph] = p.vb, ps = 4.5;
   const pouf = p.body.replace(/stroke-width="[^"]*"/g, `stroke-width="${(4.2 / ps).toFixed(3)}"`).replace(/stroke="#[0-9a-fA-F]{3,6}"/g, `stroke="${C.ink}"`);
   const a = ASSETS.cat_sit, [vx, vy, vw, vh] = a.vb, cs = 0.38;
-  s += `<g id="e6"><ellipse cx="546" cy="1640" rx="226" ry="24" fill="#d3ccbb"/>` +
+  const feet = [[513, 1623], [358, 1551], [718, 1528]], back = [563, 1456];
+  s += `<g id="e6"><path d="M${feet[0][0]},${feet[0][1] + 10} L${feet[1][0] - 14},${feet[1][1] + 4} L${back[0]},${back[1] - 2} L${feet[2][0] + 14},${feet[2][1] + 2} Z" fill="#d6cfbe" stroke="#d6cfbe" stroke-width="22" stroke-linejoin="round"/>` +
+    feet.map(([x, y]) => `<ellipse cx="${x}" cy="${y + 2}" rx="17" ry="6" fill="#bdb4a0"/>`).join("") +
     `<g transform="translate(${f(540 - (px + pw / 2) * ps)} ${f(1632 - (py + ph) * ps)} ) scale(${ps})">${pouf}</g>` +
     `<g transform="translate(${f(556 - (vx + vw / 2) * cs)} ${f(1458 - (vy + vh) * cs)}) scale(${cs})">${a.body}${lid("lidE", 3474.3, 12736.6, 16)}</g></g>`;
   return s + `</g>`;
@@ -329,7 +332,7 @@ function world() {
   return `<g id="world">` +
     `<rect x="11000" y="7985" width="17000" height="3000" fill="#000"/>` +
     `<rect x="11000" y="3000" width="17000" height="2840" fill="#fff"/>` +
-    `<g id="car">${ASSETS.car.body}</g>` + cabinSign() +
+    `<g id="car">${ASSETS.car.body}</g>` +
     windowView(PANES[0], 0) + windowView(PANES[1], 1) + windowView(PANES[2], 2, station()) +
     perfume() + spritz() + lid("lidN", 13267, 6858, 15) +
     `<g id="blossoms">${BLOSSOMS.map((b, i) => blossom(i, b)).join("")}</g>` +
@@ -378,17 +381,6 @@ function overlay() {
   s += `<g id="train" opacity="0"><rect x="-32" y="-18" width="64" height="36" rx="18" fill="#fff" stroke="#000" stroke-width="4"/>` +
     `<rect x="-18" y="-9" width="14" height="12" rx="3" fill="#000"/><rect x="4" y="-9" width="14" height="12" rx="3" fill="#000"/></g>`;
   return s + `</g></g>`;
-}
-// the car's own ceiling sign becomes an LED display showing the same station
-const SIGN = { x0: 18426, y0: 6025, x1: 20320, y1: 6241 };
-function cabinSign() {
-  const { x0, y0, x1, y1 } = SIGN, cy = (y0 + y1) / 2;
-  return `<g id="cabinsign"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="58" fill="#0b0b0b"/>` +
-    `<clipPath id="signclip"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="58"/></clipPath><g clip-path="url(#signclip)">` +
-    // the name runs twice along the long sign so it reads wherever the camera is
-    [0, 1].map((h) => `<circle ${h ? "" : 'id="signDot"'} cx="${x0 + 90 + h * 947}" cy="${cy}" r="26" fill="${LED_DOT}"/>`).join("") +
-    STATIONS.slice(1).map((st, i) => `<g id="sg${i}" opacity="0">${[0, 1].map((h) => `<text x="${x0 + 150 + h * 947}" y="${cy + 36}" font-size="104" font-weight="600" fill="${LED}">${st.name}</text>`).join("")}</g>`).join("") +
-    `</g></g>`;
 }
 
 // ── assemble ──────────────────────────────────────────────────────────────
@@ -498,8 +490,8 @@ function seek(t) {
   const up = eio(prog(t, ...T.armUp)), down = eio(prog(t, ...T.armDown)), u = up * (1 - down);
   const E = [lerp(ARM.E0[0], ARM.E1[0], u) - 14 * Math.sin(Math.PI * u), lerp(ARM.E0[1], ARM.E1[1], u)];
   const hand = [lerp(ARM.H0[0], ARM.H1[0], u) - 40 * Math.sin(Math.PI * u), lerp(ARM.H0[1], ARM.H1[1], u)];
-  set("upper", { d: limbPath(ARM.S, E, 33, 30) });
-  set("fore", { d: limbPath(E, hand, 30, 26) });
+  const dU = limbPath(ARM.S, E, 31, 29), dF = limbPath(E, hand, 29, 26);
+  set("upperO", { d: dU }); set("foreO", { d: dF }); set("upper", { d: dU }); set("fore", { d: dF });
   // the fist points along the forearm and holds the cookie just beyond it
   const fl = Math.hypot(hand[0] - E[0], hand[1] - E[1]), dir = [(hand[0] - E[0]) / fl, (hand[1] - E[1]) / fl];
   const rot = Math.atan2(dir[1], dir[0]) * 180 / Math.PI + 90;
@@ -590,11 +582,9 @@ function seek(t) {
     const a2 = k === 0 ? 1 : eo(prog(t, from + 0.12, from + 0.42)), b2 = eo(prog(t, until, until + 0.2));
     const vis = t < until + 0.2 && (k === 0 || t >= from);
     set(`nx${idx - 1}`, { opacity: vis ? f(a2 * (1 - b2)) : 0, transform: `translate(0 ${f(72 * (1 - a2) - 72 * b2)})` });
-    const flick = t >= from && t < from + 0.12 && k > 0;
-    set(`sg${idx - 1}`, { opacity: t >= from && t < until && !flick ? 1 : 0 });
   });
   const blink = t >= T.press && t < T.press + 1.2 ? (Math.floor((t - T.press) * 8) % 2 ? 0.25 : 1) : 1;
-  set("ledDot", { opacity: f(blink) }); set("signDot", { opacity: f(blink) });
+  set("ledDot", { opacity: f(blink) });
 
   // ── end card builds once we are through the window
   [["e2", 0.05], ["e3", 0.3], ["e4", 0.55], ["e5", 0.7]].forEach(([id, d]) => {

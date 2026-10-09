@@ -17,3 +17,6 @@ Her revizyonda bu listeye uyulur; burada yazanlar sorulmadan değiştirilmez.
 - ADHD kurabiyeyi eliyle ağzına götürür, ısırık ve kırıntı görünür.
 - Kedi STOP'a basar; atlama ve kapı açılması yok.
 - Kartvizit reklamları yok.
+- Vagon tavanında tabela yok (ne "next station is Marwood" ne LED).
+- Narsist'in kucağında hiçbir şey yok (eski çanta sapı dahil).
+- Son sahnede Cage puf yere basar (zemin gölgesiyle).
