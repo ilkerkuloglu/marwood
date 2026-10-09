@@ -16,14 +16,18 @@ const C = {
   salmon: "#f67f62", rose: "#f574a6", plum: "#621744", brown: "#852f24",
   dough: "#d9a35b", choc: "#4a2a1a", tile: "#f6f4ee", grout: "#dcd8cc",
 };
-// in ride order: each corner is announced as its character shows it
+// the line runs from Marwood to ORGATEC; the stand's corners in between come
+// in ride order, each announced as its character shows it
+const ORG_RED = "#e60003";
 const STATIONS = [
+  { name: "Marwood", lines: ["MARWOOD"], color: "#fff" },
   { name: "Palette Lab", lines: ["PALETTE", "LAB"], color: C.gold },
   { name: "Layer Bakery", lines: ["LAYER", "BAKERY"], color: C.pink },
   { name: "Bloom Atelier", lines: ["BLOOM", "ATELIER"], color: C.olive },
   { name: "Souvenir Shop", lines: ["SOUVENIR", "SHOP"], color: C.teal },
-  { name: "Marwood", lines: ["MARWOOD"], color: "#fff" },
+  { name: "ORGATEC", lines: ["ORGATEC"], color: ORG_RED },
 ];
+const LAST = STATIONS.length - 1;
 // LED passenger display colours (the orange "Marwood" sign everyone liked)
 const LED = "#f8b44c", LED_DOT = "#fc683c";
 
@@ -268,19 +272,20 @@ function cat() {
 }
 const layer = (name) => `<g id="L_${name}">${ASSETS[name].body}</g>`;
 
-// ── end card: Marwood station wall (screen coordinates, 1080×1920) ────────
+// ── end card: ORGATEC station wall (screen coordinates, 1080×1920) ───────
 // It is placed in the world behind window pane 3, so the train pulls into the
-// station and the camera pushes through the window onto it.
+// station and the camera pushes through the window onto it. The Marwood logo
+// stays on top (overlay), the ORGATEC logo is the station sign.
 const PUSH = { cx: 21330, cy: 7054, s: 5.2 };
 const TILE_W = 72, TILE_H = 36;
-function nameplate(cx, cy, w = 860, h = 200) {
-  return `<g transform="translate(${cx} ${cy})"><rect x="${-w / 2 - 10}" y="${-h / 2 - 10}" width="${w + 20}" height="${h + 20}" rx="34" fill="#fff" ${S(4)}/>` +
-    `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="26" fill="${C.navy}"/>` +
-    `<text x="0" y="42" text-anchor="middle" font-size="120" font-weight="700" fill="#fff" letter-spacing="2">Marwood</text></g>`;
+function orgatecSign(cx, cy, size) {
+  const a = ASSETS.orgatec_logo, k = size / a.vb[2], pad = size * 0.05;
+  return `<g transform="translate(${f(cx)} ${f(cy)})"><rect x="${f(-size / 2 - pad)}" y="${f(-size / 2 - pad)}" width="${f(size + 2 * pad)}" height="${f(size + 2 * pad)}" rx="${f(pad * 1.4)}" fill="#fff" ${S(4)}/>` +
+    `<g transform="translate(${f(-size / 2)} ${f(-size / 2)}) scale(${k.toFixed(5)})">${a.body}</g></g>`;
 }
 const FLOOR_Y = 1372;
 function stationWall() {
-  // a wide tiled wall with the station name repeated, the line colours, and
+  // a wide tiled wall with the station sign repeated, the line colours, and
   // the platform in front of it
   let s = `<defs><pattern id="tiles" patternUnits="userSpaceOnUse" width="${TILE_W}" height="${TILE_H * 2}">` +
     `<rect width="${TILE_W}" height="${TILE_H * 2}" fill="${C.tile}"/>` +
@@ -288,8 +293,8 @@ function stationWall() {
     `<pattern id="studs" patternUnits="userSpaceOnUse" width="26" height="20"><rect width="26" height="20" fill="${C.gold}"/><circle cx="13" cy="10" r="4.5" fill="#b8892a"/></pattern>` +
     `<clipPath id="floorclip"><rect x="-6600" y="${FLOOR_Y}" width="15600" height="${1846 - FLOOR_Y}"/></clipPath></defs>`;
   s += `<rect x="-6600" y="-200" width="15600" height="${FLOOR_Y - 56 + 200}" fill="url(#tiles)"/>`;
-  for (const x of [-4260, -1860, 2940, 5340]) s += nameplate(x + 540, 460);
-  STATIONS.slice(0, 4).forEach((st, i) => { s += `<rect x="-6600" y="${FLOOR_Y - 56 + i * 14}" width="15600" height="14" fill="${st.color}"/>`; });
+  for (const x of [-4800, -3000, -1200, 2280, 4080, 5880]) s += orgatecSign(x + 540, 790, 300);
+  STATIONS.slice(1, 5).forEach((st, i) => { s += `<rect x="-6600" y="${FLOOR_Y - 56 + i * 14}" width="15600" height="14" fill="${st.color}"/>`; });
   // platform floor: tiles in perspective, the tactile safety strip, the edge
   s += `<rect x="-6600" y="${FLOOR_Y}" width="15600" height="${1846 - FLOOR_Y}" fill="#e6e0d2"/><g clip-path="url(#floorclip)">`;
   for (const y of [1410, 1462, 1530, 1622]) s += `<path d="M-6600,${y} H9000" stroke="#d3ccbb" stroke-width="3"/>`;
@@ -300,15 +305,12 @@ function stationWall() {
   return s;
 }
 function endCard() {
-  let s = `<g id="endfront">` + nameplate(540, 460);
-  s += `<g id="e1"><text x="540" y="300" text-anchor="middle" font-size="42" font-weight="600" fill="${C.navy}" letter-spacing="3">YOU’RE INVITED</text></g>`;
-  s += `<g id="e2"><text x="540" y="672" text-anchor="middle" font-size="62" font-weight="700" fill="${C.navy}">discover a place</text>` +
-    `<text x="540" y="742" text-anchor="middle" font-size="62" font-weight="700" fill="${C.navy}">you’ll love to work</text></g>`;
-  // ORGATEC logo slot: replace the wordmark with the official logo file
-  s += `<g id="e3"><rect x="300" y="800" width="480" height="96" rx="14" fill="#fff" ${S(3)}/>` +
-    `<text id="orgatec" x="540" y="866" text-anchor="middle" font-size="56" font-weight="700" fill="${C.ink}" letter-spacing="6">ORGATEC</text></g>`;
-  s += `<g id="e4"><text x="540" y="972" text-anchor="middle" font-size="50" font-weight="700" fill="${C.red}">Hall 8.1 · Stand A30–B31</text></g>`;
-  s += `<g id="e5"><text x="540" y="1032" text-anchor="middle" font-size="36" font-weight="600" fill="${C.ink}">27–30 October 2026 · Cologne</text></g>`;
+  let s = `<g id="endfront">`;
+  s += `<g id="e2"><text x="540" y="474" text-anchor="middle" font-size="64" font-weight="700" fill="${C.navy}">discover a place</text>` +
+    `<text x="540" y="548" text-anchor="middle" font-size="64" font-weight="700" fill="${C.navy}">you’ll love to work</text></g>`;
+  s += `<g id="e3">${orgatecSign(540, 790, 300)}</g>`;
+  s += `<g id="e4"><text x="540" y="1046" text-anchor="middle" font-size="54" font-weight="700" fill="${C.red}">Hall 8.1 · Stand A30–B31</text></g>`;
+  s += `<g id="e5"><text x="540" y="1106" text-anchor="middle" font-size="38" font-weight="600" fill="${C.ink}">27–30 October 2026 · Cologne</text></g>`;
   // the cat on a Marwood Cage pouf, on the platform
   const p = ASSETS.cage_pouf, [px, py, pw, ph] = p.vb, ps = 4.5;
   const pouf = p.body.replace(/stroke-width="[^"]*"/g, `stroke-width="${(4.2 / ps).toFixed(3)}"`).replace(/stroke="#[0-9a-fA-F]{3,6}"/g, `stroke="${C.ink}"`);
@@ -341,30 +343,37 @@ function world() {
     `</g>`;
 }
 
-// ── screen-space overlay: invitation header and the line map (safe area) ──
-const BAND = { y0: 430, y1: 690 };
-const MAP = { x0: 120, x1: 960, y: 590 };
-const stopX = (i) => MAP.x0 + (i * (MAP.x1 - MAP.x0)) / 4;
+// ── screen-space overlay: Marwood logo on top, the line map at the bottom ─
+const HEAD_H = 330;
+const BAND = { y0: 1622, y1: 1920 };
+const MAP = { x0: 110, x1: 970, y: 1772 };
+const stopX = (i) => MAP.x0 + (i * (MAP.x1 - MAP.x0)) / LAST;
+function marwoodLogo(cx, cy, w) {
+  // the wordmark from Marwood's own corporate file (no symbol)
+  const a = ASSETS.marwood_logo_full, x0 = 4.04, x1 = 790, k = w / (x1 - x0), h = a.vb[3];
+  return `<clipPath id="mwclip"><rect x="${x0}" y="0" width="${x1 - x0}" height="${h}"/></clipPath>` +
+    `<g transform="translate(${f(cx - w / 2 - x0 * k)} ${f(cy - h * k / 2)}) scale(${k.toFixed(5)})"><g clip-path="url(#mwclip)">${a.body}</g></g>`;
+}
 function overlay() {
-  let s = `<g id="overlay"><g id="header"><rect x="0" y="-20" width="${W}" height="${BAND.y0 + 20}" fill="#fff"/>` +
-    `<g id="h1"><text x="540" y="350" text-anchor="middle" font-size="84" font-weight="700" fill="${C.navy}">You’re Invited</text></g>` +
-    `<g id="h2"><text x="540" y="404" text-anchor="middle" font-size="30" font-weight="600" fill="${C.navy}">Cologne · 27–30 Oct 2026 · Hall 8.1 · Stand A30–B31</text></g></g>`;
-  s += `<g id="band"><rect x="0" y="${BAND.y0}" width="${W}" height="${BAND.y1 - BAND.y0}" fill="#000"/>`;
+  let s = `<g id="overlay"><g id="header"><rect x="0" y="-20" width="${W}" height="${HEAD_H + 20}" fill="#fff"/>` +
+    `<path d="M0,${HEAD_H} H${W}" stroke="${C.ink}" stroke-width="4"/>${marwoodLogo(540, 238, 440)}</g>`;
+  s += `<g id="band"><rect x="0" y="${BAND.y0}" width="${W}" height="${BAND.y1 - BAND.y0 + 20}" fill="#000"/>`;
   // LED readout
-  s += `<circle id="ledDot" cx="${MAP.x0 - 12}" cy="491" r="9" fill="${LED_DOT}"/>` +
-    `<text x="${MAP.x0 + 10}" y="500" font-size="24" font-weight="600" fill="${LED}" letter-spacing="3">NEXT STATION</text>`;
-  s += `<clipPath id="nextclip"><rect x="420" y="452" width="${W - 420}" height="68"/></clipPath><g clip-path="url(#nextclip)">` +
-    STATIONS.slice(1).map((st, i) => `<text id="nx${i}" x="${W - MAP.x0 + 22}" y="506" text-anchor="end" font-size="46" font-weight="700" fill="${LED}" opacity="0">${st.name}</text>`).join("") + `</g>`;
-  // the line
-  for (let i = 0; i < 4; i++) s += `<rect id="seg${i}" x="${stopX(i)}" y="${MAP.y - 9}" width="${stopX(i + 1) - stopX(i)}" height="18" fill="${STATIONS[i].color}"/>`;
-  for (let i = 0; i < 5; i++) {
-    const last = i === 4, col = STATIONS[i].color;
-    s += `<g id="stop${i}" transform="translate(${stopX(i)} ${MAP.y}) scale(0)">` +
-      `<circle id="pr${i}" r="20" fill="none" stroke="${last ? LED : col}" stroke-width="6" opacity="0"/>` +
-      (last ? `<circle r="22" fill="#000" stroke="#fff" stroke-width="7"/><circle id="dot4" r="9" fill="#fff"/>`
-            : `<circle r="17" fill="#000" stroke="${col}" stroke-width="7"/><circle id="dot${i}" r="9" fill="${col}" opacity="0"/>`) + `</g>`;
-    s += `<text id="lab${i}" x="${stopX(i)}" y="${MAP.y + 50}" text-anchor="middle" font-size="${last ? 24 : 21}" font-weight="700" fill="${last ? LED : "#fff"}" letter-spacing="1.5" opacity="0">` +
-      STATIONS[i].lines.map((l, k) => `<tspan x="${stopX(i)}" dy="${k ? 25 : 0}">${l}</tspan>`).join("") + `</text>`;
+  s += `<circle id="ledDot" cx="${MAP.x0 - 6}" cy="1683" r="9" fill="${LED_DOT}"/>` +
+    `<text x="${MAP.x0 + 16}" y="1692" font-size="24" font-weight="600" fill="${LED}" letter-spacing="3">NEXT STATION</text>`;
+  s += `<clipPath id="nextclip"><rect x="420" y="1644" width="${W - 420}" height="70"/></clipPath><g clip-path="url(#nextclip)">` +
+    STATIONS.slice(1).map((st, i) => `<text id="nx${i}" x="${W - MAP.x0 + 22}" y="1698" text-anchor="end" font-size="46" font-weight="700" fill="${LED}" opacity="0">${st.name}</text>`).join("") + `</g>`;
+  // the line, coloured by the stop it leads to
+  for (let i = 0; i < LAST; i++) s += `<rect id="seg${i}" x="${f(stopX(i))}" y="${MAP.y - 9}" width="${f(stopX(i + 1) - stopX(i))}" height="18" fill="${STATIONS[i + 1].color}"/>`;
+  for (let i = 0; i <= LAST; i++) {
+    const col = STATIONS[i].color;
+    const ring = i === 0 ? `<circle r="20" fill="#000" stroke="#fff" stroke-width="7"/><circle r="8" fill="#fff"/>`
+      : i === LAST ? `<circle r="24" fill="${ORG_RED}" stroke="#fff" stroke-width="6"/><circle id="dot${i}" r="8" fill="#fff" opacity="0"/>`
+      : `<circle r="17" fill="#000" stroke="${col}" stroke-width="7"/><circle id="dot${i}" r="9" fill="${col}" opacity="0"/>`;
+    s += `<g id="stop${i}" transform="translate(${f(stopX(i))} ${MAP.y}) scale(0)"><circle id="pr${i}" r="20" fill="none" stroke="${i === LAST ? "#fff" : col}" stroke-width="6" opacity="0"/>${ring}</g>`;
+    const big = i === 0 || i === LAST;
+    s += `<text id="lab${i}" x="${f(stopX(i))}" y="${MAP.y + 52}" text-anchor="middle" font-size="${big ? 24 : 20}" font-weight="700" fill="${i === 0 ? LED : "#fff"}" letter-spacing="1.5" opacity="0">` +
+      STATIONS[i].lines.map((l, k) => `<tspan x="${f(stopX(i))}" dy="${k ? 24 : 0}">${l}</tspan>`).join("") + `</text>`;
   }
   s += `<g id="train" opacity="0"><rect x="-32" y="-18" width="64" height="36" rx="18" fill="#fff" stroke="#000" stroke-width="4"/>` +
     `<rect x="-18" y="-9" width="14" height="12" rx="3" fill="#000"/><rect x="4" y="-9" width="14" height="12" rx="3" fill="#000"/></g>`;
@@ -376,8 +385,9 @@ function cabinSign() {
   const { x0, y0, x1, y1 } = SIGN, cy = (y0 + y1) / 2;
   return `<g id="cabinsign"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="58" fill="#0b0b0b"/>` +
     `<clipPath id="signclip"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="58"/></clipPath><g clip-path="url(#signclip)">` +
-    `<circle id="signDot" cx="${x0 + 120}" cy="${cy}" r="30" fill="${LED_DOT}"/>` +
-    STATIONS.slice(1).map((st, i) => `<text id="sg${i}" x="${x0 + 200}" y="${cy + 44}" font-size="128" font-weight="600" fill="${LED}" opacity="0">${st.name}</text>`).join("") +
+    // the name runs twice along the long sign so it reads wherever the camera is
+    [0, 1].map((h) => `<circle ${h ? "" : 'id="signDot"'} cx="${x0 + 90 + h * 947}" cy="${cy}" r="26" fill="${LED_DOT}"/>`).join("") +
+    STATIONS.slice(1).map((st, i) => `<g id="sg${i}" opacity="0">${[0, 1].map((h) => `<text x="${x0 + 150 + h * 947}" y="${cy + 36}" font-size="104" font-weight="600" fill="${LED}">${st.name}</text>`).join("")}</g>`).join("") +
     `</g></g>`;
 }
 
@@ -389,18 +399,17 @@ const set = (id, attrs) => { const el = typeof id === "string" ? $(id) : id; for
 
 // ── timeline ──────────────────────────────────────────────────────────────
 const T = {
-  spritz: 0.25, wink: 1.05, pull: [1.4, 2.3], header: [1.55, 2.05], band: [1.75, 2.2], line: [1.95, 2.5],
+  spritz: 0.25, wink: 1.05, pull: [1.4, 2.3], band: [1.2, 1.65], line: [1.35, 2.0],
   armUp: [2.75, 3.2], bite: 3.25, armDown: [3.7, 4.1],
   bloom: 4.85, plate: 6.95, stick: [8.35, 8.6, 8.85], notes: 9.7,
   paw: [11.6, 11.95], press: 11.95, brake: [12.1, 13.1], push: [13.15, 14.2], end: 14.2,
 };
-// station lights: [station index, time]
-// the train marker: [time, position on the line]; it arrives at each corner as
-// its character shows it, and at Marwood as the train stops
-const RUN = [[2.45, 0], [3.25, 1], [3.75, 1], [4.85, 2], [5.4, 2], [8.35, 3], [8.85, 3], [13.05, 4]];
-const ARRIVE = [2.35, 3.25, 4.85, 8.35, 13.05];
+// the train marker: [time, position on the line]; it leaves Marwood, arrives
+// at each corner as its character shows it, and at ORGATEC as the train stops
+const RUN = [[2.0, 0], [2.4, 1], [2.6, 1], [3.25, 2], [3.75, 2], [4.85, 3], [5.4, 3], [8.35, 4], [8.85, 4], [13.05, 5]];
+const ARRIVE = [-1, 2.4, 3.25, 4.85, 8.35, 13.05];
 // what the displays announce: [from time, station index]
-const NEXT = [[0, 1], [3.75, 2], [5.4, 3], [8.85, 4]];
+const NEXT = [[0, 1], [2.6, 2], [3.75, 3], [5.4, 4], [8.85, 5]];
 function trainPos(t) {
   if (t <= RUN[0][0]) return RUN[0][1];
   for (let i = 1; i < RUN.length; i++) {
@@ -409,7 +418,7 @@ function trainPos(t) {
   return RUN[RUN.length - 1][1];
 }
 // camera stops (world centre x, scale); y keeps the car framed under the band
-const RIDE_S = 0.47, RIDE_CY = 7323;
+const RIDE_S = 0.465, RIDE_CY = 7300;
 const STOPS = [
   { at: 2.3, until: 4.15, cx: 13870 }, // Narsist + ADHD
   { at: 4.75, until: 5.9, cx: 15960 }, // Aktivist
@@ -557,33 +566,29 @@ function seek(t) {
   const sway = t > T.brake[0] ? -3 * Math.exp(-(t - T.brake[0]) * 3) * Math.sin((t - T.brake[0]) * 9) : 0;
   set("cat", { transform: `rotate(${f(sway)} ${CAT.x} ${CAT.y})` });
 
-  // ── overlay: header, line map, LED readouts
-  const out = eio(prog(t, T.push[0], T.push[0] + 0.45)); // leaves as we push through the window
-  const hd = eo(prog(t, ...T.header));
-  set("header", { transform: `translate(0 ${f(-470 * (1 - hd) - 470 * out)})` });
-  set("h1", { transform: `translate(540 330) scale(${f(Math.max(0.001, spring(t - T.header[0] - 0.1, 8, 0.38)))}) translate(-540 -330)` });
-  set("h2", { opacity: f(eo(prog(t, T.header[0] + 0.3, T.header[0] + 0.75))) });
-  const bd = eo(prog(t, ...T.band));
-  set("band", { transform: `translate(${f(-W * (1 - bd))} 0)`, opacity: f(1 - out) });
+  // ── overlay: line map and LED readouts (the logo header stays all along)
+  const out = eio(prog(t, T.push[0], T.push[0] + 0.45)); // the band leaves as we push through the window
+  const hu = eo(prog(t, ...T.band));
+  set("band", { transform: `translate(0 ${f(330 * (1 - hu) + 330 * out)})` });
   const ln = eio(prog(t, ...T.line));
-  for (let i = 0; i < 4; i++) set(`seg${i}`, { width: f((stopX(i + 1) - stopX(i)) * clamp(ln * 4 - i)) });
-  for (let i = 0; i < 5; i++) {
-    const p = Math.max(0, spring(t - T.line[0] - i * 0.12, 10, 0.4));
-    const arr = ARRIVE[i], extra = i === 4 ? [T.press] : [];
+  for (let i = 0; i < LAST; i++) set(`seg${i}`, { width: f((stopX(i + 1) - stopX(i)) * clamp(ln * LAST - i)) });
+  for (let i = 0; i <= LAST; i++) {
+    const p = Math.max(0, spring(t - T.line[0] - i * 0.1, 10, 0.4));
+    const arr = ARRIVE[i], extra = i === LAST ? [T.press] : [];
     const bump = [arr, ...extra].reduce((m, tt) => Math.max(m, pulse(t, tt, 0.4)), 0);
-    set(`stop${i}`, { transform: `translate(${stopX(i)} ${MAP.y}) scale(${f(p * (1 + 0.4 * bump))})` });
-    if (i < 4) set(`dot${i}`, { opacity: t >= arr ? 1 : 0 });
+    set(`stop${i}`, { transform: `translate(${f(stopX(i))} ${MAP.y}) scale(${f(p * (1 + 0.4 * bump))})` });
+    if (i > 0) set(`dot${i}`, { opacity: t >= arr ? 1 : 0 });
     const pr = [arr, ...extra].map((tt) => prog(t, tt, tt + 0.6)).find((v) => v > 0 && v < 1);
     set(`pr${i}`, { r: f(20 + 34 * (pr ?? 0)), opacity: pr !== undefined ? f(1 - pr) : 0 });
-    set(`lab${i}`, { opacity: f(eo(prog(t, T.line[0] + 0.3 + i * 0.1, T.line[0] + 0.7 + i * 0.1))) });
+    set(`lab${i}`, { opacity: f(eo(prog(t, T.line[0] + 0.25 + i * 0.08, T.line[0] + 0.65 + i * 0.08))) });
   }
-  const pos = trainPos(t), seg = Math.min(3, Math.floor(pos));
-  set("train", { transform: `translate(${f(lerp(stopX(seg), stopX(seg + 1), pos - seg))} ${MAP.y})`, opacity: f(eo(prog(t, T.line[1] - 0.15, T.line[1] + 0.2))) });
+  const pos = trainPos(t), seg = Math.min(LAST - 1, Math.floor(pos));
+  set("train", { transform: `translate(${f(lerp(stopX(seg), stopX(seg + 1), pos - seg))} ${MAP.y})`, opacity: f(eo(prog(t, T.line[1] - 0.2, T.line[1] + 0.1))) });
   // readouts: the name slides up on the band and flickers over on the LED sign
   NEXT.forEach(([from, idx], k) => {
     const until = k + 1 < NEXT.length ? NEXT[k + 1][0] : 99;
     const a2 = k === 0 ? 1 : eo(prog(t, from + 0.12, from + 0.42)), b2 = eo(prog(t, until, until + 0.2));
-    const vis = t >= from - (k === 0 ? 99 : 0) && t < until + 0.2;
+    const vis = t < until + 0.2 && (k === 0 || t >= from);
     set(`nx${idx - 1}`, { opacity: vis ? f(a2 * (1 - b2)) : 0, transform: `translate(0 ${f(72 * (1 - a2) - 72 * b2)})` });
     const flick = t >= from && t < from + 0.12 && k > 0;
     set(`sg${idx - 1}`, { opacity: t >= from && t < until && !flick ? 1 : 0 });
@@ -592,7 +597,7 @@ function seek(t) {
   set("ledDot", { opacity: f(blink) }); set("signDot", { opacity: f(blink) });
 
   // ── end card builds once we are through the window
-  [["e1", 0.0], ["e2", 0.15], ["e3", 0.4], ["e4", 0.6], ["e5", 0.75]].forEach(([id, d]) => {
+  [["e2", 0.05], ["e3", 0.3], ["e4", 0.55], ["e5", 0.7]].forEach(([id, d]) => {
     const p = eo(prog(t, T.end + d, T.end + d + 0.45));
     set(id, { opacity: f(p), transform: `translate(0 ${f(36 * (1 - p))})` });
   });
