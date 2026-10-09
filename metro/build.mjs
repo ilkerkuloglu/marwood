@@ -12,7 +12,7 @@ const A = (f) => path.join(HERE, "assets", f);
 // Layers drawn above the window view (so the city scrolls behind them); ADHD
 // also sways on her strap. Boxes come from the element index of the source.
 const CH = {
-  adhd: { rect: [14120, 6600, 14752, 8725] },
+  adhd: { rect: [14120, 6600, 14752, 8725], drop: [[14150.87, 7381.38, 14228.69, 7719.6]] }, // her hanging arm is redrawn
   kafein: { rect: [18150, 6780, 19050, 8368] },
   sakar: { rect: [19365, 6640, 20138, 8580] },
   asosyal: { rect: [20297, 6680, 20915, 8322], cut: [[20180, 7860, 20362, 8270]] },
@@ -22,9 +22,17 @@ const DROP = [[12938, 7368, 13287, 7599], [12947, 7385, 13277, 7475], [13045, 73
 const jobs = [];
 const bgCuts = [];
 for (const [name, c] of Object.entries(CH)) {
-  jobs.push({ src: K, out: A(`${name}.svg`), rect: c.rect, cut: c.cut || [], prefix: name, tol: 4 });
+  jobs.push({ src: K, out: A(`${name}.svg`), rect: c.rect, cut: c.cut || [], drop: c.drop || [], prefix: name, tol: 4 });
   bgCuts.push(c.rect);
 }
+// Narsist's folded forearms and hands, redrawn over the perfume bottle
+jobs.push({ src: K, out: A("narsist_arms.svg"), rect: [12840, 7280, 13410, 7640], prefix: "na", tol: 4, only: [
+  [13159.48, 7613.33, 13174.47, 7629.29], [13144.76, 7296.53, 13397.94, 7594.54], [13172.61, 7577.92, 13191.32, 7601.65],
+  [12855.69, 7296.67, 13193.19, 7627.98], [13180.04, 7551.7, 13202.6, 7579.8], [13179.18, 7572.47, 13201.4, 7602.85],
+  [13159.08, 7610.2, 13173.59, 7625.66], [13166.12, 7593.93, 13173.61, 7602.17], [13052.08, 7598.39, 13059.57, 7606.63],
+  [13146.21, 7591.51, 13193.6, 7619.9]] });
+// ADHD's sleeve cuff, redrawn over her new (animated) arm
+jobs.push({ src: K, out: A("adhd_cuff.svg"), rect: [14120, 7340, 14240, 7412], prefix: "ac", tol: 4, only: [[14127.32, 7344.31, 14232.85, 7406.91]] });
 jobs.push({ src: K, out: A("car.svg"), rect: [11790, 5820, 27200, 8845], cut: bgCuts, drop: DROP, prefix: "car", tol: 4 });
 fs.writeFileSync(A("jobs.json"), JSON.stringify(jobs));
 execFileSync("node", [path.join(HERE, "../cover/tools/extract.mjs"), A("jobs.json")], { stdio: "inherit" });
@@ -48,7 +56,7 @@ function flatten(file) {
   });
   return { vb, body: body.replace(/\s+\n/g, "\n") };
 }
-const files = [...Object.keys(CH), "car"];
+const files = [...Object.keys(CH), "car", "narsist_arms", "adhd_cuff"];
 const extra = ["cat_sit"];
 const out = {};
 for (const f of files) out[f] = flatten(`${f}.svg`);
