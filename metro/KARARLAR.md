@@ -20,3 +20,7 @@ Her revizyonda bu listeye uyulur; burada yazanlar sorulmadan değiştirilmez.
 - Vagon tavanında tabela yok (ne "next station is Marwood" ne LED).
 - Narsist'in kucağında hiçbir şey yok (eski çanta sapı dahil).
 - Son sahnede Cage puf yere basar (zemin gölgesiyle).
+- Narsist'in kolu manşetten aşağı iner, dirsekten kıvrılır, tek parça çizilir.
+- ADHD'nin kolu manşetin içinden başlar, tek parça çizilir.
+- Asosyal elinde tablet değil "Greetings from Cologne" kartpostalı tutar;
+  Souvenir Shop durağına varış bu ana denk gelir.

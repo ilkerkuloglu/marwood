@@ -120,9 +120,11 @@ function windowView(pane, i, extra = "") {
 // Zeynep's own gripping hand (from Kafein's cup), mirrored and turned so the
 // bottle stands nearly upright; the forearm runs across his chest to the
 // elbow at the sleeve, as in her original folded-arms pose
-const GRIP = { Wk: [18660, 7458], k: 1.05, rot: -22 };
-const NARM = { E: [13338, 7306] };          // elbow, hidden inside the sleeve hem
-const gripW = [13195.8, 7292.1];             // wrist
+const GRIP = { Wk: [18660, 7458], k: 1.05, rot: -10 };
+// the upper arm comes down out of the sleeve to the elbow at his side, the
+// forearm goes up across his chest to the hand
+const NARM = { S: [13366, 7300], E: [13404, 7452], L: 226 };
+const gripW = (() => { const d = (27 + GRIP.rot) * Math.PI / 180; return [NARM.E[0] - NARM.L * Math.cos(d), NARM.E[1] - NARM.L * Math.sin(d)]; })();
 // hand frame (Kafein's drawing coordinates) → world
 const gripM = (() => {
   const r = GRIP.rot * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r), k = GRIP.k;
@@ -148,7 +150,10 @@ function perfume() {
     `<g id="cap"><rect x="-23" y="-208" width="46" height="40" rx="8" fill="${C.ink}"/>` +
     `<rect x="-42" y="-200" width="21" height="12" rx="3" fill="${C.ink}"/></g></g></g>`;
   const palm = `<polygon points="18668,7432 18700,7392 18745,7338 18790,7322 18802,7398 18762,7442 18700,7470 18648,7484" fill="#fff"/>`;
-  return `<g id="narm"><path d="${limbPath(NARM.E, gripW, 27, 29)}" fill="#fff" ${S(6)}/>` +
+  // one continuous arm: a thick outline pass under a fill pass, so the elbow has no seam
+  const up = limbPath(NARM.S, NARM.E, 30, 29), fore = limbPath(NARM.E, gripW, 29, 29);
+  return `<g id="narm"><g fill="${C.ink}" stroke="${C.ink}" stroke-width="12" stroke-linejoin="round"><path d="${up}"/><path d="${fore}"/></g>` +
+    `<g fill="#fff"><path d="${up}"/><path d="${fore}"/></g>` +
     `<g transform="matrix(${gripM.map((v) => +v.toFixed(5)).join(" ")})">${bottle}${palm}<clipPath id="gripclip"><polygon points="18600,7280 18900,7280 18900,7540 18684,7540 18684,7464 18600,7464"/></clipPath><g id="L_grip" clip-path="url(#gripclip)">${ASSETS.grip_hand.body}</g></g>` +
     `<g id="L_narsist_cuff">${ASSETS.narsist_cuff.body}</g></g>`;
 }
@@ -179,7 +184,7 @@ function spritz() {
 // ADHD: her hanging arm is replaced by a two-bone arm that lifts a cookie to
 // her mouth (Layer Bakery); the sleeve cuff is redrawn over the shoulder
 // elbow and hand keyframes; with the elbow forward the upper arm is foreshortened
-const ARM = { S: [14180, 7362], E0: [14168, 7540], H0: [14178, 7762], E1: [14238, 7408], H1: [14302, 7160] };
+const ARM = { S: [14180, 7386], E0: [14168, 7550], H0: [14178, 7762], E1: [14240, 7420], H1: [14302, 7160] };
 const MOUTH = { x: 14392, y: 7051 };
 function adhdArm() {
   const cookie = `<mask id="bitemask" maskUnits="userSpaceOnUse" x="-70" y="-70" width="140" height="140"><rect x="-70" y="-70" width="140" height="140" fill="#fff"/>` +
@@ -243,6 +248,27 @@ const stickers = () => STICKERS.map((o, k) => `<g id="st${k}" opacity="0">${o.bo
 function headphones() {
   return `<path d="M20474,6900 C20450,6596 20780,6596 20756,6900" fill="none" ${S(13)}/>` +
     `<rect x="20452" y="6866" width="44" height="108" rx="18" fill="${C.ink}"/><rect x="20734" y="6866" width="44" height="108" rx="18" fill="${C.ink}"/>`;
+}
+// Asosyal's postcard (Souvenir Shop), in the tablet's place and perspective:
+// the picture side faces us, her fingers hold its lower corners
+const CARD = [[20522, 7212], [20712, 7204], [20704, 7350], [20528, 7356]];
+function postcard() {
+  const [a, b, c, d] = CARD, pt = (u, v) => { // bilinear point on the card, u,v in 0..1
+    const top = [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], bot = [d[0] + (c[0] - d[0]) * u, d[1] + (c[1] - d[1]) * u];
+    return [f(top[0] + (bot[0] - top[0]) * v), f(top[1] + (bot[1] - top[1]) * v)];
+  };
+  const quad = (u0, v0, u1, v1) => [pt(u0, v0), pt(u1, v0), pt(u1, v1), pt(u0, v1)].map((p) => p.join(",")).join(" ");
+  // the picture is drawn in a flat 100×70 frame mapped onto the inner panel
+  const [p0, p1, , p3] = [pt(0.07, 0.09), pt(0.93, 0.09), pt(0.93, 0.91), pt(0.07, 0.91)];
+  const m = [(p1[0] - p0[0]) / 100, (p1[1] - p0[1]) / 100, (p3[0] - p0[0]) / 70, (p3[1] - p0[1]) / 70, p0[0], p0[1]].map((v) => +v.toFixed(4));
+  const pic = `<rect width="100" height="70" fill="${C.teal}"/>` +
+    `<path d="M0,54 Q25,46 50,54 T100,52 V70 H0Z" fill="${C.olive}"/>` +
+    `<text x="50" y="17" text-anchor="middle" font-size="8.5" font-weight="600" fill="#fff" letter-spacing="1.2">GREETINGS FROM</text>` +
+    `<text x="50" y="41" text-anchor="middle" font-size="16.5" font-weight="700" fill="${C.salmon}" stroke="${C.ink}" stroke-width="1.4" paint-order="stroke">COLOGNE</text>` +
+    `<path d="${star4(4)}" transform="translate(12 58)" fill="#fff"/><path d="${star4(3)}" transform="translate(90 60)" fill="#fff"/>`;
+  return `<g id="card"><polygon points="${quad(0, 0, 1, 1)}" fill="#fff" ${S(5)}/>` +
+    `<g transform="matrix(${m.join(" ")})">${pic}</g><polygon points="${quad(0.07, 0.09, 0.93, 0.91)}" fill="none" stroke="${C.ink}" stroke-width="2"/></g>` +
+    `<g id="cardsp">${[[20470, 7160, 46, C.gold], [20770, 7150, 40, C.salmon], [20800, 7290, 30, C.gold]].map(([x, y, r, col], i) => `<path id="cs${i}" data-x="${x}" data-y="${y}" d="${star4(r)}" fill="${col}" ${S(4)} transform="scale(0)"/>`).join("")}</g>`;
 }
 const NOTE_COLORS = [C.salmon, C.gold, C.rose, C.gold];
 function note(i) {
@@ -340,7 +366,7 @@ function world() {
     `<g id="adhd">${layer("adhd")}${lid("lidA1", 14339, 6955, 16)}${lid("lidA2", 14443, 6956, 16)}${chewMouth()}${adhdArm()}</g>` +
     `<g id="crumbs">${[0, 1, 2, 3, 4, 5].map((k) => `<rect id="cr${k}" width="14" height="14" rx="3" fill="${C.dough}" ${S(3)} opacity="0"/>`).join("")}</g>` +
     `<g id="sakar">${layer("sakar")}${stickers()}${lid("lidS1", 19664, 6888, 14)}${lid("lidS2", 19749, 6888, 14)}</g>` +
-    `<g id="asosyal">${layer("asosyal")}${headphones()}</g>` +
+    `<g id="asosyal">${layer("asosyal")}${postcard()}${layer("asosyal_hands")}${headphones()}</g>` +
     `<g id="notes">${[0, 1, 2, 3, 4, 5].map(note).join("")}</g>` +
     pole() + cat() +
     `</g>`;
@@ -398,10 +424,10 @@ const T = {
 };
 // the train marker: [time, position on the line]; it leaves Marwood, arrives
 // at each corner as its character shows it, and at ORGATEC as the train stops
-const RUN = [[2.0, 0], [2.4, 1], [2.6, 1], [3.25, 2], [3.75, 2], [4.85, 3], [5.4, 3], [8.35, 4], [8.85, 4], [13.05, 5]];
-const ARRIVE = [-1, 2.4, 3.25, 4.85, 8.35, 13.05];
+const RUN = [[2.0, 0], [2.4, 1], [2.6, 1], [3.25, 2], [3.75, 2], [4.85, 3], [5.4, 3], [10.0, 4], [10.45, 4], [13.05, 5]];
+const ARRIVE = [-1, 2.4, 3.25, 4.85, 10.0, 13.05];
 // what the displays announce: [from time, station index]
-const NEXT = [[0, 1], [2.6, 2], [3.75, 3], [5.4, 4], [8.85, 5]];
+const NEXT = [[0, 1], [2.6, 2], [3.75, 3], [5.4, 4], [10.45, 5]];
 function trainPos(t) {
   if (t <= RUN[0][0]) return RUN[0][1];
   for (let i = 1; i < RUN.length; i++) {
@@ -544,6 +570,11 @@ function seek(t) {
     const side = i % 2 ? 1 : -1;
     const x = (side > 0 ? 20820 : 20410) + side * (40 + 150 * uu) + Math.sin(uu * 6 + i) * 22, y = 6930 - uu * 420;
     set(`nt${i}`, { opacity: t > st ? f(Math.sin(uu * Math.PI)) : 0, transform: `translate(${f(x)} ${f(y)}) rotate(${f(Math.sin(uu * 5 + i) * 14)}) scale(${f(0.8 + 0.4 * Math.sin(uu * Math.PI))})` });
+  });
+
+  [0, 1, 2].forEach((i) => {
+    const el = $(`cs${i}`), sp = prog(t, 10.0 + i * 0.1, 10.9 + i * 0.1);
+    set(el, { transform: `translate(${el.dataset.x} ${el.dataset.y}) rotate(${f(t * 90)}) scale(${f(sp <= 0 || sp >= 1 ? 0 : Math.sin(Math.PI * sp))})` });
   });
 
   // ── the cat presses STOP
