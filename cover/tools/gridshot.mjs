@@ -12,7 +12,9 @@ for (let x = Math.ceil(x0 / step) * step; x <= x1; x += step)
   grid += `<line x1="${x}" y1="${y0}" x2="${x}" y2="${y1}" stroke="#f0f" stroke-width="${w / 1600}" opacity=".6"/><text x="${x + w / 400}" y="${y0 + fs_}" font-size="${fs_}" fill="#f0f">${x}</text>`;
 for (let y = Math.ceil(y0 / step) * step; y <= y1; y += step)
   grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="#0af" stroke-width="${w / 1600}" opacity=".6"/><text x="${x0 + w / 400}" y="${y - w / 400}" font-size="${fs_}" fill="#0af">${y}</text>`;
-svg = svg.replace(/<svg([^>]*)width="[^"]*"([^>]*)height="[^"]*"([^>]*)viewBox="[^"]*"/, `<svg$1width="${pw}"$2height="${ph}"$3viewBox="${x0} ${y0} ${w} ${h}"`)
+svg = svg.replace(/<svg\b[^>]*>/, (tag) => tag
+    .replace(/\s(width|height|viewBox|x|y|enable-background)="[^"]*"/g, "")
+    .replace(/<svg/, `<svg width="${pw}" height="${ph}" viewBox="${x0} ${y0} ${w} ${h}"`))
   .replace(/<\/svg>\s*$/, `${grid}</svg>`);
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
 const page = await browser.newPage({ viewport: { width: pw, height: ph } });
