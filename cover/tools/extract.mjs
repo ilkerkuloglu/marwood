@@ -41,6 +41,42 @@ for (const job of jobs) {
       const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
       return { box: [Math.min(...xs) - s, Math.min(...ys) - s, Math.max(...xs) + s, Math.max(...ys) + s], m };
     };
+    // rewrite a path's data with absolute commands only, so it can be split
+    // into sub-paths at every M (Illustrator often writes relative "m")
+    const absolutize = (d) => {
+      const toks = d.match(/[a-zA-Z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g) || [];
+      let i = 0, cmd = "", cx = 0, cy = 0, sx = 0, sy = 0, out = [];
+      const num = () => +toks[i++];
+      const isNum = () => i < toks.length && !/^[a-zA-Z]$/.test(toks[i]);
+      while (i < toks.length) {
+        if (/^[a-zA-Z]$/.test(toks[i])) cmd = toks[i++];
+        const rel = cmd === cmd.toLowerCase(), C = cmd.toUpperCase();
+        if (C === "Z") { out.push("Z"); cx = sx; cy = sy; continue; }
+        if (!isNum()) continue;
+        if (C === "M") {
+          let x = num(), y = num(); if (rel) { x += cx; y += cy; }
+          out.push(`M${x} ${y}`); cx = sx = x; cy = sy = y; cmd = rel ? "l" : "L";
+        } else if (C === "L" || C === "T") {
+          let x = num(), y = num(); if (rel) { x += cx; y += cy; }
+          out.push(`${C}${x} ${y}`); cx = x; cy = y;
+        } else if (C === "H") { let x = num(); if (rel) x += cx; out.push(`L${x} ${cy}`); cx = x; }
+        else if (C === "V") { let y = num(); if (rel) y += cy; out.push(`L${cx} ${y}`); cy = y; }
+        else if (C === "C") {
+          const v = [num(), num(), num(), num(), num(), num()];
+          if (rel) for (let k = 0; k < 6; k += 2) { v[k] += cx; v[k + 1] += cy; }
+          out.push(`C${v.join(" ")}`); cx = v[4]; cy = v[5];
+        } else if (C === "S" || C === "Q") {
+          const v = [num(), num(), num(), num()];
+          if (rel) for (let k = 0; k < 4; k += 2) { v[k] += cx; v[k + 1] += cy; }
+          out.push(`${C}${v.join(" ")}`); cx = v[2]; cy = v[3];
+        } else if (C === "A") {
+          const v = [num(), num(), num(), num(), num(), num(), num()];
+          if (rel) { v[5] += cx; v[6] += cy; }
+          out.push(`A${v.join(" ")}`); cx = v[5]; cy = v[6];
+        } else i++;
+      }
+      return out.join(" ");
+    };
     const leaves = [...root.querySelectorAll("path, use, rect, circle, ellipse, line, polyline, polygon")]
       .filter((el) => !el.closest("defs") && !el.closest("clipPath") && !el.closest("mask"));
     const defs = new Map();
@@ -50,7 +86,7 @@ for (const job of jobs) {
       const sw = cs.stroke !== "none" ? parseFloat(cs.strokeWidth) : 0;
       let d = null, keepBoxes = [];
       if (el.tagName === "path") {
-        const subs = (el.getAttribute("d") || "").split(/(?=M)/).filter((s) => s.trim());
+        const subs = absolutize(el.getAttribute("d") || "").split(/(?=M)/).filter((s) => s.trim());
         const kept = [];
         for (const sp of subs) {
           const t = el.cloneNode(false);
