@@ -565,11 +565,12 @@ function seek(t) {
   // ── Asosyal nods to her music; notes drift up from the ear cups
   const nod = t > T.notes - 0.2 ? Math.max(0, Math.sin((t - T.notes) * Math.PI * 2 * 1.1)) * 8 : 0;
   set("asosyal", { transform: `translate(0 ${f(nod)})` });
+  const ntFade = 1 - prog(t, 11.5, 12.1); // notes die out before the brake/push
   [0, 1, 2, 3, 4, 5].forEach((i) => {
     const per = 1.6, st = T.notes + i * 0.27, ph = (((t - st) % per) + per) % per, uu = ph / per;
     const side = i % 2 ? 1 : -1;
     const x = (side > 0 ? 20820 : 20410) + side * (40 + 150 * uu) + Math.sin(uu * 6 + i) * 22, y = 6930 - uu * 420;
-    set(`nt${i}`, { opacity: t > st ? f(Math.sin(uu * Math.PI)) : 0, transform: `translate(${f(x)} ${f(y)}) rotate(${f(Math.sin(uu * 5 + i) * 14)}) scale(${f(0.8 + 0.4 * Math.sin(uu * Math.PI))})` });
+    set(`nt${i}`, { opacity: t > st && ntFade > 0 ? f(Math.sin(uu * Math.PI) * ntFade) : 0, transform: `translate(${f(x)} ${f(y)}) rotate(${f(Math.sin(uu * 5 + i) * 14)}) scale(${f(0.8 + 0.4 * Math.sin(uu * Math.PI))})` });
   });
 
   [0, 1, 2].forEach((i) => {
