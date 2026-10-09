@@ -65,6 +65,25 @@ function limbPath(a, b, w0, w1) {
     `${f(b[0] - nx * w1)},${f(b[1] - ny * w1)}`, ...cap(b, w1, t0 + Math.PI)];
   return `M${pts.join(" L")}Z`;
 }
+// one smooth bent limb: a ribbon along the quadratic bezier S→C→W, round at
+// the shoulder, flat at the wrist (the hand is drawn over the joint)
+function bentArm(Sp, Cp, Wp, w0, w1, w2) {
+  const N = 22, Lx = [], Rx = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, mt = 1 - t;
+    const x = mt * mt * Sp[0] + 2 * mt * t * Cp[0] + t * t * Wp[0];
+    const y = mt * mt * Sp[1] + 2 * mt * t * Cp[1] + t * t * Wp[1];
+    let dx = mt * (Cp[0] - Sp[0]) + t * (Wp[0] - Cp[0]), dy = mt * (Cp[1] - Sp[1]) + t * (Wp[1] - Cp[1]);
+    const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+    const w = (t < 0.5 ? lerp(w0, w1, t * 2) : lerp(w1, w2, (t - 0.5) * 2)) / 2;
+    Lx.push(`${f(x - dy * w)},${f(y + dx * w)}`); Rx.unshift(`${f(x + dy * w)},${f(y - dx * w)}`);
+  }
+  // round cap at S
+  const d0 = [Cp[0] - Sp[0], Cp[1] - Sp[1]], l0 = Math.hypot(...d0) || 1;
+  const a0 = Math.atan2(d0[0] / l0, -d0[1] / l0), cap = [];
+  for (let i = 1; i < 10; i++) { const a = a0 + Math.PI - (i / 10) * Math.PI; cap.push(`${f(Sp[0] + Math.cos(a) * w0 / 2)},${f(Sp[1] + Math.sin(a) * w0 / 2)}`); }
+  return `M${[...Lx, ...Rx, ...cap].join(" L")}Z`;
+}
 
 // ── world: Zeynep's metro, in the source file's coordinates ───────────────
 const PANES = [
@@ -150,10 +169,12 @@ function perfume() {
     `<g id="cap"><rect x="-23" y="-208" width="46" height="40" rx="8" fill="${C.ink}"/>` +
     `<rect x="-42" y="-200" width="21" height="12" rx="3" fill="${C.ink}"/></g></g></g>`;
   const palm = `<polygon points="18668,7432 18700,7392 18745,7338 18790,7322 18802,7398 18762,7442 18700,7470 18648,7484" fill="#fff"/>`;
-  // one continuous arm: a thick outline pass under a fill pass, so the elbow has no seam
-  const up = limbPath(NARM.S, NARM.E, 30, 29), fore = limbPath(NARM.E, gripW, 29, 29);
-  return `<g id="narm"><g fill="${C.ink}" stroke="${C.ink}" stroke-width="12" stroke-linejoin="round"><path d="${up}"/><path d="${fore}"/></g>` +
-    `<g fill="#fff"><path d="${up}"/><path d="${fore}"/></g>` +
+  // one smooth arm out of the sleeve, down past the elbow and up to the hand;
+  // it ends flat inside the palm, so the hand covers the joint
+  const NW = [13182, 7387], NC = [2 * NARM.E[0] - (NARM.S[0] + NW[0]) / 2, 2 * NARM.E[1] - (NARM.S[1] + NW[1]) / 2];
+  const armd = bentArm(NARM.S, NC, NW, 30, 29, 24);
+  return `<g id="narm"><path d="${armd}" fill="${C.ink}" stroke="${C.ink}" stroke-width="12" stroke-linejoin="round"/>` +
+    `<path d="${armd}" fill="#fff"/>` +
     `<g transform="matrix(${gripM.map((v) => +v.toFixed(5)).join(" ")})">${bottle}${palm}<clipPath id="gripclip"><polygon points="18600,7280 18900,7280 18900,7540 18684,7540 18684,7464 18600,7464"/></clipPath><g id="L_grip" clip-path="url(#gripclip)">${ASSETS.grip_hand.body}</g></g>` +
     `<g id="L_narsist_cuff">${ASSETS.narsist_cuff.body}</g></g>`;
 }
@@ -184,19 +205,22 @@ function spritz() {
 // ADHD: her hanging arm is replaced by a two-bone arm that lifts a cookie to
 // her mouth (Layer Bakery); the sleeve cuff is redrawn over the shoulder
 // elbow and hand keyframes; with the elbow forward the upper arm is foreshortened
-const ARM = { S: [14180, 7386], E0: [14168, 7550], H0: [14178, 7762], E1: [14240, 7420], H1: [14302, 7160] };
+const ARM = { S: [14180, 7386], E0: [14168, 7550], H0: [14178, 7762], E1: [14240, 7420], H1: [14310, 7230] };
 const MOUTH = { x: 14392, y: 7051 };
 function adhdArm() {
   const cookie = `<mask id="bitemask" maskUnits="userSpaceOnUse" x="-70" y="-70" width="140" height="140"><rect x="-70" y="-70" width="140" height="140" fill="#fff"/>` +
     `<g id="bite" opacity="0"><circle cx="44" cy="-26" r="22" fill="#000"/><circle cx="56" cy="2" r="18" fill="#000"/><circle cx="34" cy="-48" r="13" fill="#000"/></g></mask>` +
     `<g id="cookie"><g mask="url(#bitemask)"><circle r="54" fill="${C.dough}" ${S(6)}/>` +
     [[-22, -14], [10, -26], [16, 12], [-10, 22], [-30, 8], [2, -2]].map(([a, b]) => ring(a, b, 7, `fill="${C.choc}"`)).join("") + `</g></g>`;
-  const hand = `<g id="hand"><path d="M-30,-14 C-30,-30 30,-30 32,-14 L34,18 C34,34 -30,34 -32,18 Z" fill="#fff" ${S(5)}/>` +
-    `<path d="M-12,-26 V-6 M6,-26 V-6 M22,-24 V-6" fill="none" ${S(4)}/><path d="M-32,4 C-46,-2 -46,-22 -30,-22" fill="#fff" ${S(5)}/></g>`;
-  // the cuff sits over the upper arm; the forearm passes in front of it
-  // drawn as one shape: a thick outline pass under a fill pass, so the elbow has no seam
-  return `<g fill="${C.ink}" stroke="${C.ink}" stroke-width="10" stroke-linejoin="round"><path id="upperO"/><path id="foreO"/></g>` +
-    `<g fill="#fff"><path id="upper"/><path id="fore"/></g><g id="L_adhd_cuff">${ASSETS.adhd_cuff.body}</g>${cookie}${hand}`;
+  // Zeynep's gripping hand (Kafein's), wrist at GRIP.Wk in its own frame;
+  // positioned every frame along the forearm in seek()
+  const hand = `<g id="hand"><polygon points="18668,7432 18700,7392 18745,7338 18790,7322 18802,7398 18762,7442 18700,7470 18648,7484" fill="#fff"/>` +
+    `<clipPath id="gripclip2"><polygon points="18600,7280 18900,7280 18900,7540 18684,7540 18684,7464 18600,7464"/></clipPath>` +
+    `<g clip-path="url(#gripclip2)">${ASSETS.grip_hand.body}</g></g>`;
+  // the cuff sits over the upper arm; outline pass under a fill pass, with a
+  // round elbow joining the two bones so the bend never shows a corner
+  return `<g fill="${C.ink}" stroke="${C.ink}" stroke-width="10" stroke-linejoin="round"><path id="upO"/><path id="foO"/><circle id="elO" r="28"/></g>` +
+    `<g fill="#fff"><path id="upF"/><path id="foF"/><circle id="elF" r="28"/></g><g id="L_adhd_cuff">${ASSETS.adhd_cuff.body}</g>${cookie}${hand}`;
 }
 // two-bone IK, elbow on the outer (left) side
 function ik(Sp, T, L1, L2) {
@@ -251,24 +275,24 @@ function headphones() {
 }
 // Asosyal's postcard (Souvenir Shop), in the tablet's place and perspective:
 // the picture side faces us, her fingers hold its lower corners
-const CARD = [[20522, 7212], [20712, 7204], [20704, 7350], [20528, 7356]];
+const CARD = [[20532, 7122], [20702, 7112], [20694, 7350], [20534, 7356]];
+// the "Body of Work – Floating Generation" postcard from Zeynep's card sheet,
+// in its own source coordinates
+const PC = { x: 7018.528, y: 907.307, w: 304.123, h: 431.526 };
 function postcard() {
   const [a, b, c, d] = CARD, pt = (u, v) => { // bilinear point on the card, u,v in 0..1
     const top = [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], bot = [d[0] + (c[0] - d[0]) * u, d[1] + (c[1] - d[1]) * u];
     return [f(top[0] + (bot[0] - top[0]) * v), f(top[1] + (bot[1] - top[1]) * v)];
   };
   const quad = (u0, v0, u1, v1) => [pt(u0, v0), pt(u1, v0), pt(u1, v1), pt(u0, v1)].map((p) => p.join(",")).join(" ");
-  // the picture is drawn in a flat 100×70 frame mapped onto the inner panel
-  const [p0, p1, , p3] = [pt(0.07, 0.09), pt(0.93, 0.09), pt(0.93, 0.91), pt(0.07, 0.91)];
-  const m = [(p1[0] - p0[0]) / 100, (p1[1] - p0[1]) / 100, (p3[0] - p0[0]) / 70, (p3[1] - p0[1]) / 70, p0[0], p0[1]].map((v) => +v.toFixed(4));
-  const pic = `<rect width="100" height="70" fill="${C.teal}"/>` +
-    `<path d="M0,54 Q25,46 50,54 T100,52 V70 H0Z" fill="${C.olive}"/>` +
-    `<text x="50" y="17" text-anchor="middle" font-size="8.5" font-weight="600" fill="#fff" letter-spacing="1.2">GREETINGS FROM</text>` +
-    `<text x="50" y="41" text-anchor="middle" font-size="16.5" font-weight="700" fill="${C.salmon}" stroke="${C.ink}" stroke-width="1.4" paint-order="stroke">COLOGNE</text>` +
-    `<path d="${star4(4)}" transform="translate(12 58)" fill="#fff"/><path d="${star4(3)}" transform="translate(90 60)" fill="#fff"/>`;
+  // the design is mapped onto the inner panel, inside a thin white print margin
+  const [p0, p1, , p3] = [pt(0.035, 0.028), pt(0.965, 0.028), pt(0.965, 0.972), pt(0.035, 0.972)];
+  const m = [(p1[0] - p0[0]) / PC.w, (p1[1] - p0[1]) / PC.w, (p3[0] - p0[0]) / PC.h, (p3[1] - p0[1]) / PC.h];
+  m.push(p0[0] - m[0] * PC.x - m[2] * PC.y, p0[1] - m[1] * PC.x - m[3] * PC.y);
   return `<g id="card"><polygon points="${quad(0, 0, 1, 1)}" fill="#fff" ${S(5)}/>` +
-    `<g transform="matrix(${m.join(" ")})">${pic}</g><polygon points="${quad(0.07, 0.09, 0.93, 0.91)}" fill="none" stroke="${C.ink}" stroke-width="2"/></g>` +
-    `<g id="cardsp">${[[20470, 7160, 46, C.gold], [20770, 7150, 40, C.salmon], [20800, 7290, 30, C.gold]].map(([x, y, r, col], i) => `<path id="cs${i}" data-x="${x}" data-y="${y}" d="${star4(r)}" fill="${col}" ${S(4)} transform="scale(0)"/>`).join("")}</g>`;
+    `<g transform="matrix(${m.map((v) => +v.toFixed(6)).join(" ")})"><clipPath id="pcclip"><rect x="${PC.x}" y="${PC.y}" width="${PC.w}" height="${PC.h}"/></clipPath>` +
+    `<g clip-path="url(#pcclip)">${ASSETS.postcard.body}</g></g></g>` +
+    `<g id="cardsp">${[[20480, 7100, 46, C.gold], [20764, 7086, 40, C.salmon], [20796, 7262, 30, C.gold]].map(([x, y, r, col], i) => `<path id="cs${i}" data-x="${x}" data-y="${y}" d="${star4(r)}" fill="${col}" ${S(4)} transform="scale(0)"/>`).join("")}</g>`;
 }
 const NOTE_COLORS = [C.salmon, C.gold, C.rose, C.gold];
 function note(i) {
@@ -514,15 +538,20 @@ function seek(t) {
   // ── ADHD: lifts the cookie to her mouth, bites, chews, lowers it
   set("adhd", { transform: `rotate(${f(1.6 * Math.sin(t * 2.4))} 14700 6640)` });
   const up = eio(prog(t, ...T.armUp)), down = eio(prog(t, ...T.armDown)), u = up * (1 - down);
-  const E = [lerp(ARM.E0[0], ARM.E1[0], u) - 14 * Math.sin(Math.PI * u), lerp(ARM.E0[1], ARM.E1[1], u)];
-  const hand = [lerp(ARM.H0[0], ARM.H1[0], u) - 40 * Math.sin(Math.PI * u), lerp(ARM.H0[1], ARM.H1[1], u)];
-  const dU = limbPath(ARM.S, E, 31, 29), dF = limbPath(E, hand, 29, 26);
-  set("upperO", { d: dU }); set("foreO", { d: dF }); set("upper", { d: dU }); set("fore", { d: dF });
-  // the fist points along the forearm and holds the cookie just beyond it
+  const E = [lerp(ARM.E0[0], ARM.E1[0], u), lerp(ARM.E0[1], ARM.E1[1], u)];
+  const hand = [lerp(ARM.H0[0], ARM.H1[0], u) + 26 * Math.sin(Math.PI * u), lerp(ARM.H0[1], ARM.H1[1], u)];
   const fl = Math.hypot(hand[0] - E[0], hand[1] - E[1]), dir = [(hand[0] - E[0]) / fl, (hand[1] - E[1]) / fl];
-  const rot = Math.atan2(dir[1], dir[0]) * 180 / Math.PI + 90;
-  set("hand", { transform: `translate(${f(hand[0] + dir[0] * 8)} ${f(hand[1] + dir[1] * 8)}) rotate(${f(rot)})` });
-  let ck = [hand[0] + dir[0] * 62, hand[1] + dir[1] * 62];
+  // two capsules with a round elbow; the forearm ends inside the palm
+  const Hn = [hand[0] + dir[0] * 4, hand[1] + dir[1] * 4];
+  const dU = limbPath(ARM.S, E, 31, 29), dF = limbPath(E, Hn, 29, 26);
+  set("upO", { d: dU }); set("foO", { d: dF }); set("upF", { d: dU }); set("foF", { d: dF });
+  set("elO", { cx: f(E[0]), cy: f(E[1]) }); set("elF", { cx: f(E[0]), cy: f(E[1]) });
+  // Zeynep's grip hand rides the wrist, pointing along the forearm; the
+  // cookie sits where her cup sat in the hand's own frame
+  const phi = Math.atan2(dir[1], dir[0]) * 180 / Math.PI, th = phi + 34.3, K = 0.95;
+  set("hand", { transform: `translate(${f(hand[0])} ${f(hand[1])}) rotate(${f(th)}) scale(${K}) translate(${-GRIP.Wk[0]} ${-GRIP.Wk[1]})` });
+  const tr = th * Math.PI / 180, co = Math.cos(tr), si = Math.sin(tr);
+  let ck = [hand[0] + K * (co * 126 - si * -86), hand[1] + K * (si * 126 + co * -86)];
   const nudge = 26 * pulse(t, T.bite - 0.08, 0.2), toM = [MOUTH.x - ck[0], MOUTH.y - ck[1]], ml = Math.hypot(...toM);
   ck = [ck[0] + toM[0] / ml * nudge, ck[1] + toM[1] / ml * nudge];
   set("cookie", { transform: `translate(${f(ck[0])} ${f(ck[1])})` });

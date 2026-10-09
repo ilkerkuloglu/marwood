@@ -64,7 +64,7 @@ function flatten(file) {
 }
 const files = [...Object.keys(CH), "car", "narsist_cuff", "adhd_cuff", "grip_hand", "asosyal_hands"];
 const extra = ["cat_sit"];
-const own = ["cage_pouf", "orgatec_logo", "marwood_logo_full"]; // already in assets/
+const own = ["cage_pouf", "orgatec_logo", "marwood_logo_full", "postcard"]; // already in assets/
 const out = {};
 for (const f of files) out[f] = flatten(`${f}.svg`);
 // the two floor halves meet edge to edge, which antialiases into a grey seam:
