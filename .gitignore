@@ -1,2 +1,6 @@
 node_modules/
 animation/out/
+metro/node_modules
+metro/assets/jobs.json
+metro/out/*
+!metro/out/marwood_hatti.mp4

@@ -5,6 +5,7 @@
 //   node extract.mjs spec.json
 // spec: [{ src, out, rect:[x0,y0,x1,y1], tol, prefix, cut:[[x0,y0,x1,y1],...] }]
 //   cut  regions inside rect whose sub-paths are dropped (stray neighbours)
+//   drop exact element bounding boxes (from index_svg.mjs) to leave out whole elements
 import { chromium } from "playwright-core";
 import fs from "node:fs";
 const jobs = [].concat(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
@@ -81,9 +82,14 @@ for (const job of jobs) {
       .filter((el) => !el.closest("defs") && !el.closest("clipPath") && !el.closest("mask"));
     const defs = new Map();
     let body = "", ext = [Infinity, Infinity, -Infinity, -Infinity], n = 0;
+    const drops = job.drop || [];
     for (const el of leaves) {
       const cs = getComputedStyle(el);
       const sw = cs.stroke !== "none" ? parseFloat(cs.strokeWidth) : 0;
+      if (drops.length) {
+        let wb; try { wb = boxOf(el, sw).box; } catch { wb = null; }
+        if (wb && drops.some((d) => d.every((v, i) => Math.abs(v - wb[i]) < 1.5))) continue;
+      }
       let d = null, keepBoxes = [];
       if (el.tagName === "path") {
         const subs = absolutize(el.getAttribute("d") || "").split(/(?=M)/).filter((s) => s.trim());
