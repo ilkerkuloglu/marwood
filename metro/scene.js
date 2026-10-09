@@ -16,13 +16,16 @@ const C = {
   salmon: "#f67f62", rose: "#f574a6", plum: "#621744", brown: "#852f24",
   dough: "#d9a35b", choc: "#4a2a1a", tile: "#f6f4ee", grout: "#dcd8cc",
 };
+// in ride order: each corner is announced as its character shows it
 const STATIONS = [
-  { name: "Souvenir Shop", lines: ["SOUVENIR", "SHOP"], color: C.teal },
-  { name: "Layer Bakery", lines: ["LAYER", "BAKERY"], color: C.pink },
   { name: "Palette Lab", lines: ["PALETTE", "LAB"], color: C.gold },
+  { name: "Layer Bakery", lines: ["LAYER", "BAKERY"], color: C.pink },
   { name: "Bloom Atelier", lines: ["BLOOM", "ATELIER"], color: C.olive },
+  { name: "Souvenir Shop", lines: ["SOUVENIR", "SHOP"], color: C.teal },
   { name: "Marwood", lines: ["MARWOOD"], color: "#fff" },
 ];
+// LED passenger display colours (the orange "Marwood" sign everyone liked)
+const LED = "#f8b44c", LED_DOT = "#fc683c";
 
 // ── easing & helpers ──────────────────────────────────────────────────────
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -110,30 +113,51 @@ function windowView(pane, i, extra = "") {
 
 // Narsist: his right arm is redrawn raised, holding a perfume bottle up to
 // his neck (Palette Lab); the sleeve cuff goes over the upper arm
-const NARM = { S: [13374, 7318], E: [13478, 7436], H: [13436, 7128] };
-const BOTTLE = { x: 13430, y: 7060 }; // centre of a squat perfume flacon
+// Zeynep's own gripping hand (from Kafein's cup), mirrored and turned so the
+// bottle stands nearly upright; the forearm runs across his chest to the
+// elbow at the sleeve, as in her original folded-arms pose
+const GRIP = { Wk: [18660, 7458], k: 1.05, rot: -22 };
+const NARM = { E: [13400, 7310], L: 205 };
+const gripW = (() => { const a = GRIP.rot * Math.PI / 180 + Math.PI * 5 / 180 - Math.PI * 5 / 180; void a;
+  const d = (27 + GRIP.rot) * Math.PI / 180; return [NARM.E[0] - NARM.L * Math.cos(d), NARM.E[1] - NARM.L * Math.sin(d)]; })();
+// hand frame (Kafein's drawing coordinates) → world
+const gripM = (() => {
+  const r = GRIP.rot * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r), k = GRIP.k;
+  // translate(W) · rotate(r) · scale(-k, k) · translate(-Wk)
+  const a = -k * c, b = -k * sn, cc = -k * sn, d = k * c;
+  return [a, b, cc, d, gripW[0] - (a * GRIP.Wk[0] + cc * GRIP.Wk[1]), gripW[1] - (b * GRIP.Wk[0] + d * GRIP.Wk[1])];
+})();
+const gripPt = ([x, y]) => [gripM[0] * x + gripM[2] * y + gripM[4], gripM[1] * x + gripM[3] * y + gripM[5]];
+// the bottle sits in the grip where her cup was, its axis along the cup's
+const BOTTLE_K = { c: [18786, 7372], rot: -44 };
+const bottlePt = ([x, y]) => { // bottle frame → Kafein frame → world
+  const r = BOTTLE_K.rot * Math.PI / 180;
+  return gripPt([BOTTLE_K.c[0] + x * Math.cos(r) - y * Math.sin(r), BOTTLE_K.c[1] + x * Math.sin(r) + y * Math.cos(r)]);
+};
 function perfume() {
-  const { x, y } = BOTTLE;
-  const bottle = `<g id="bottle"><rect x="${x - 48}" y="${y - 46}" width="96" height="92" rx="20" fill="#fff" ${S(7)}/>` +
-    `<rect x="${x - 38}" y="${y - 22}" width="76" height="58" rx="12" fill="${C.gold}"/>` +
-    `<path d="M${x - 28},${y - 30} V${y + 20}" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".9"/>` +
-    `<rect x="${x - 14}" y="${y - 62}" width="28" height="18" rx="4" fill="#fff" ${S(6)}/>` +
-    `<g id="cap"><rect x="${x - 20}" y="${y - 96}" width="40" height="36" rx="8" fill="${C.ink}"/>` +
-    `<rect x="${x - 38}" y="${y - 88}" width="20" height="10" rx="3" fill="${C.ink}"/></g></g>`;
-  const hand = `<g id="nhand"><path d="M${x - 54},${y + 2} C${x - 56},${y - 10} ${x + 52},${y - 10} ${x + 54},${y + 2} L${x + 56},${y + 58} C${x + 54},${y + 74} ${x - 52},${y + 74} ${x - 54},${y + 58} Z" fill="#fff" ${S(6)}/>` +
-    `<path d="M${x - 42},${y + 22} H${x + 42} M${x - 44},${y + 42} H${x + 44} M${x - 42},${y + 60} H${x + 40}" fill="none" ${S(5)}/>` +
-    `<path d="M${x - 54},${y + 18} C${x - 74},${y + 12} ${x - 72},${y - 10} ${x - 46},${y - 8}" fill="#fff" ${S(6)}/></g>`;
-  return `<g id="narm"><path d="${limbPath(NARM.S, NARM.E, 33, 33)}" fill="#fff" ${S(6)}/><g id="L_narsist_cuff">${ASSETS.narsist_cuff.body}</g>` +
-    `<path d="${limbPath(NARM.E, NARM.H, 34, 30)}" fill="#fff" ${S(6)}/>${bottle}${hand}</g>`;
+  // a classic flacon in its own upright frame, centred on the body
+  const bottle = `<g transform="translate(${BOTTLE_K.c[0]} ${BOTTLE_K.c[1]}) rotate(${BOTTLE_K.rot})"><g id="bottle">` +
+    `<rect x="-56" y="-150" width="112" height="176" rx="24" fill="#fff" ${S(6.5)}/>` +
+    `<rect x="-44" y="-126" width="88" height="84" rx="14" fill="${C.gold}"/>` +
+    `<path d="M-32,-132 V-60" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".9"/>` +
+    `<path d="${star4(15)}" transform="translate(6 -84)" fill="${C.navy}"/>` +
+    `<rect x="-16" y="-170" width="32" height="22" rx="4" fill="#fff" ${S(6)}/>` +
+    `<g id="cap"><rect x="-23" y="-208" width="46" height="40" rx="8" fill="${C.ink}"/>` +
+    `<rect x="-42" y="-200" width="21" height="12" rx="3" fill="${C.ink}"/></g></g></g>`;
+  const palm = `<polygon points="18668,7432 18700,7392 18745,7338 18790,7322 18802,7398 18762,7442 18700,7470 18648,7484" fill="#fff"/>`;
+  return `<g id="narm"><path d="${limbPath(NARM.E, gripW, 33, 30)}" fill="#fff" ${S(6)}/>` +
+    `<g transform="matrix(${gripM.map((v) => +v.toFixed(5)).join(" ")})">${bottle}${palm}<clipPath id="gripclip"><polygon points="18600,7280 18900,7280 18900,7540 18684,7540 18684,7464 18600,7464"/></clipPath><g id="L_grip" clip-path="url(#gripclip)">${ASSETS.grip_hand.body}</g></g>` +
+    `<g id="L_narsist_cuff">${ASSETS.narsist_cuff.body}</g></g>`;
 }
 // the spray: a fine mist from the nozzle across to his neck, then the scent
 // trails up around his face
-const NOZZLE = [13390, 6977];
+const NOZZLE = bottlePt([-44, -194]);
+const NECK = [13175, 7030];
 const SPRAY = (() => {
   seed = 5;
   return Array.from({ length: 26 }, (_, k) => {
-    const a = (158 + rnd() * 34) * Math.PI / 180;
-    return { a, d: 70 + rnd() * 140, r: 3 + rnd() * 5, c: [C.gold, C.salmon, C.rose][k % 3], dl: rnd() * 0.12 };
+    const a = Math.atan2(NECK[1] - NOZZLE[1], NECK[0] - NOZZLE[0]) + (rnd() - 0.5) * 0.6;
+    return { a, d: 40 + rnd() * Math.hypot(NECK[0] - NOZZLE[0], NECK[1] - NOZZLE[1]), r: 3 + rnd() * 5, c: [C.gold, C.salmon, C.rose][k % 3], dl: rnd() * 0.12 };
   });
 })();
 function spritz() {
@@ -303,7 +327,7 @@ function world() {
   return `<g id="world">` +
     `<rect x="11000" y="7985" width="17000" height="3000" fill="#000"/>` +
     `<rect x="11000" y="3000" width="17000" height="2840" fill="#fff"/>` +
-    `<g id="car">${ASSETS.car.body}</g>` +
+    `<g id="car">${ASSETS.car.body}</g>` + cabinSign() +
     windowView(PANES[0], 0) + windowView(PANES[1], 1) + windowView(PANES[2], 2, station()) +
     perfume() + spritz() + lid("lidN", 13267, 6858, 15) +
     `<g id="blossoms">${BLOSSOMS.map((b, i) => blossom(i, b)).join("")}</g>` +
@@ -318,26 +342,43 @@ function world() {
 }
 
 // ── screen-space overlay: invitation header and the line map (safe area) ──
-const MAP = { x0: 120, x1: 960, y: 520 };
+const BAND = { y0: 430, y1: 690 };
+const MAP = { x0: 120, x1: 960, y: 590 };
 const stopX = (i) => MAP.x0 + (i * (MAP.x1 - MAP.x0)) / 4;
 function overlay() {
-  let s = `<g id="overlay"><g id="header"><rect x="0" y="-20" width="${W}" height="450" fill="#fff"/>` +
+  let s = `<g id="overlay"><g id="header"><rect x="0" y="-20" width="${W}" height="${BAND.y0 + 20}" fill="#fff"/>` +
     `<g id="h1"><text x="540" y="350" text-anchor="middle" font-size="84" font-weight="700" fill="${C.navy}">You’re Invited</text></g>` +
     `<g id="h2"><text x="540" y="404" text-anchor="middle" font-size="30" font-weight="600" fill="${C.navy}">Cologne · 27–30 Oct 2026 · Hall 8.1 · Stand A30–B31</text></g></g>`;
-  s += `<g id="band"><rect x="0" y="430" width="${W}" height="172" fill="#000"/>`;
-  s += `<text x="${MAP.x0 - 24}" y="474" font-size="22" font-weight="600" fill="#fff" opacity=".6" letter-spacing="3">NEXT STATION</text>`;
-  s += `<g id="nextname"><text x="${W - MAP.x0 + 24}" y="478" text-anchor="end" font-size="36" font-weight="700" fill="#fff">Marwood</text></g>`;
-  for (let i = 0; i < 4; i++) s += `<rect id="seg${i}" x="${stopX(i)}" y="${MAP.y - 8}" width="${stopX(i + 1) - stopX(i)}" height="16" fill="${STATIONS[i].color}"/>`;
+  s += `<g id="band"><rect x="0" y="${BAND.y0}" width="${W}" height="${BAND.y1 - BAND.y0}" fill="#000"/>`;
+  // LED readout
+  s += `<circle id="ledDot" cx="${MAP.x0 - 12}" cy="491" r="9" fill="${LED_DOT}"/>` +
+    `<text x="${MAP.x0 + 10}" y="500" font-size="24" font-weight="600" fill="${LED}" letter-spacing="3">NEXT STATION</text>`;
+  s += `<clipPath id="nextclip"><rect x="420" y="452" width="${W - 420}" height="68"/></clipPath><g clip-path="url(#nextclip)">` +
+    STATIONS.slice(1).map((st, i) => `<text id="nx${i}" x="${W - MAP.x0 + 22}" y="506" text-anchor="end" font-size="46" font-weight="700" fill="${LED}" opacity="0">${st.name}</text>`).join("") + `</g>`;
+  // the line
+  for (let i = 0; i < 4; i++) s += `<rect id="seg${i}" x="${stopX(i)}" y="${MAP.y - 9}" width="${stopX(i + 1) - stopX(i)}" height="18" fill="${STATIONS[i].color}"/>`;
   for (let i = 0; i < 5; i++) {
     const last = i === 4, col = STATIONS[i].color;
     s += `<g id="stop${i}" transform="translate(${stopX(i)} ${MAP.y}) scale(0)">` +
-      `<circle id="pr${i}" r="20" fill="none" stroke="${col}" stroke-width="6" opacity="0"/>` +
-      (last ? `<circle r="24" fill="#fff"/><circle r="10" fill="#000"/>`
-            : `<circle r="16" fill="#000" stroke="${col}" stroke-width="7"/><circle id="dot${i}" r="9" fill="${col}" opacity="0"/>`) + `</g>`;
-    s += `<text id="lab${i}" x="${stopX(i)}" y="${MAP.y + 50}" text-anchor="middle" font-size="${last ? 24 : 20}" font-weight="700" fill="#fff" letter-spacing="1.5" opacity="0">` +
-      STATIONS[i].lines.map((l, k) => `<tspan x="${stopX(i)}" dy="${k ? 24 : 0}">${l}</tspan>`).join("") + `</text>`;
+      `<circle id="pr${i}" r="20" fill="none" stroke="${last ? LED : col}" stroke-width="6" opacity="0"/>` +
+      (last ? `<circle r="22" fill="#000" stroke="#fff" stroke-width="7"/><circle id="dot4" r="9" fill="#fff"/>`
+            : `<circle r="17" fill="#000" stroke="${col}" stroke-width="7"/><circle id="dot${i}" r="9" fill="${col}" opacity="0"/>`) + `</g>`;
+    s += `<text id="lab${i}" x="${stopX(i)}" y="${MAP.y + 50}" text-anchor="middle" font-size="${last ? 24 : 21}" font-weight="700" fill="${last ? LED : "#fff"}" letter-spacing="1.5" opacity="0">` +
+      STATIONS[i].lines.map((l, k) => `<tspan x="${stopX(i)}" dy="${k ? 25 : 0}">${l}</tspan>`).join("") + `</text>`;
   }
+  s += `<g id="train" opacity="0"><rect x="-32" y="-18" width="64" height="36" rx="18" fill="#fff" stroke="#000" stroke-width="4"/>` +
+    `<rect x="-18" y="-9" width="14" height="12" rx="3" fill="#000"/><rect x="4" y="-9" width="14" height="12" rx="3" fill="#000"/></g>`;
   return s + `</g></g>`;
+}
+// the car's own ceiling sign becomes an LED display showing the same station
+const SIGN = { x0: 18426, y0: 6025, x1: 20320, y1: 6241 };
+function cabinSign() {
+  const { x0, y0, x1, y1 } = SIGN, cy = (y0 + y1) / 2;
+  return `<g id="cabinsign"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="58" fill="#0b0b0b"/>` +
+    `<clipPath id="signclip"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="58"/></clipPath><g clip-path="url(#signclip)">` +
+    `<circle id="signDot" cx="${x0 + 120}" cy="${cy}" r="30" fill="${LED_DOT}"/>` +
+    STATIONS.slice(1).map((st, i) => `<text id="sg${i}" x="${x0 + 200}" y="${cy + 44}" font-size="128" font-weight="600" fill="${LED}" opacity="0">${st.name}</text>`).join("") +
+    `</g></g>`;
 }
 
 // ── assemble ──────────────────────────────────────────────────────────────
@@ -354,7 +395,19 @@ const T = {
   paw: [11.6, 11.95], press: 11.95, brake: [12.1, 13.1], push: [13.15, 14.2], end: 14.2,
 };
 // station lights: [station index, time]
-const LIGHTS = [[2, 2.6], [1, 3.3], [3, 4.95], [1, 7.05], [0, 8.4]];
+// the train marker: [time, position on the line]; it arrives at each corner as
+// its character shows it, and at Marwood as the train stops
+const RUN = [[2.45, 0], [3.25, 1], [3.75, 1], [4.85, 2], [5.4, 2], [8.35, 3], [8.85, 3], [13.05, 4]];
+const ARRIVE = [2.35, 3.25, 4.85, 8.35, 13.05];
+// what the displays announce: [from time, station index]
+const NEXT = [[0, 1], [3.75, 2], [5.4, 3], [8.85, 4]];
+function trainPos(t) {
+  if (t <= RUN[0][0]) return RUN[0][1];
+  for (let i = 1; i < RUN.length; i++) {
+    if (t <= RUN[i][0]) return lerp(RUN[i - 1][1], RUN[i][1], eio(prog(t, RUN[i - 1][0], RUN[i][0])));
+  }
+  return RUN[RUN.length - 1][1];
+}
 // camera stops (world centre x, scale); y keeps the car framed under the band
 const RIDE_S = 0.47, RIDE_CY = 7323;
 const STOPS = [
@@ -504,31 +557,39 @@ function seek(t) {
   const sway = t > T.brake[0] ? -3 * Math.exp(-(t - T.brake[0]) * 3) * Math.sin((t - T.brake[0]) * 9) : 0;
   set("cat", { transform: `rotate(${f(sway)} ${CAT.x} ${CAT.y})` });
 
-  // ── overlay: header, line map, station lights
+  // ── overlay: header, line map, LED readouts
   const out = eio(prog(t, T.push[0], T.push[0] + 0.45)); // leaves as we push through the window
   const hd = eo(prog(t, ...T.header));
   set("header", { transform: `translate(0 ${f(-470 * (1 - hd) - 470 * out)})` });
   set("h1", { transform: `translate(540 330) scale(${f(Math.max(0.001, spring(t - T.header[0] - 0.1, 8, 0.38)))}) translate(-540 -330)` });
-  const h2 = eo(prog(t, T.header[0] + 0.3, T.header[0] + 0.75));
-  set("h2", { opacity: f(h2) });
+  set("h2", { opacity: f(eo(prog(t, T.header[0] + 0.3, T.header[0] + 0.75))) });
   const bd = eo(prog(t, ...T.band));
   set("band", { transform: `translate(${f(-W * (1 - bd))} 0)`, opacity: f(1 - out) });
   const ln = eio(prog(t, ...T.line));
   for (let i = 0; i < 4; i++) set(`seg${i}`, { width: f((stopX(i + 1) - stopX(i)) * clamp(ln * 4 - i)) });
   for (let i = 0; i < 5; i++) {
     const p = Math.max(0, spring(t - T.line[0] - i * 0.12, 10, 0.4));
-    const lit = LIGHTS.filter(([k]) => k === i).map(([, tt]) => tt);
-    const on = lit.some((tt) => t >= tt) || (i === 4 && t >= T.press);
-    const bump = lit.concat(i === 4 ? [T.press] : []).reduce((m, tt) => Math.max(m, pulse(t, tt, 0.4)), 0);
-    set(`stop${i}`, { transform: `translate(${stopX(i)} ${MAP.y}) scale(${f(p * (i === 4 ? 1.2 : 1) * (1 + (i === 4 ? 0.22 : 0.45) * bump))})` });
-    if (i < 4) set(`dot${i}`, { opacity: on ? 1 : 0 });
-    const pr = lit.concat(i === 4 ? [T.press] : []).map((tt) => prog(t, tt, tt + 0.6)).find((v) => v > 0 && v < 1);
+    const arr = ARRIVE[i], extra = i === 4 ? [T.press] : [];
+    const bump = [arr, ...extra].reduce((m, tt) => Math.max(m, pulse(t, tt, 0.4)), 0);
+    set(`stop${i}`, { transform: `translate(${stopX(i)} ${MAP.y}) scale(${f(p * (1 + 0.4 * bump))})` });
+    if (i < 4) set(`dot${i}`, { opacity: t >= arr ? 1 : 0 });
+    const pr = [arr, ...extra].map((tt) => prog(t, tt, tt + 0.6)).find((v) => v > 0 && v < 1);
     set(`pr${i}`, { r: f(20 + 34 * (pr ?? 0)), opacity: pr !== undefined ? f(1 - pr) : 0 });
-    const base = eo(prog(t, T.line[0] + 0.3 + i * 0.1, T.line[0] + 0.7 + i * 0.1));
-    set(`lab${i}`, { opacity: f(base) });
+    set(`lab${i}`, { opacity: f(eo(prog(t, T.line[0] + 0.3 + i * 0.1, T.line[0] + 0.7 + i * 0.1))) });
   }
-  const nb = pulse(t, T.press, 0.45);
-  set("nextname", { transform: `translate(${W - MAP.x0 + 24} 466) scale(${f(1 + 0.25 * nb)}) translate(${-(W - MAP.x0 + 24)} -466)` });
+  const pos = trainPos(t), seg = Math.min(3, Math.floor(pos));
+  set("train", { transform: `translate(${f(lerp(stopX(seg), stopX(seg + 1), pos - seg))} ${MAP.y})`, opacity: f(eo(prog(t, T.line[1] - 0.15, T.line[1] + 0.2))) });
+  // readouts: the name slides up on the band and flickers over on the LED sign
+  NEXT.forEach(([from, idx], k) => {
+    const until = k + 1 < NEXT.length ? NEXT[k + 1][0] : 99;
+    const a2 = k === 0 ? 1 : eo(prog(t, from + 0.12, from + 0.42)), b2 = eo(prog(t, until, until + 0.2));
+    const vis = t >= from - (k === 0 ? 99 : 0) && t < until + 0.2;
+    set(`nx${idx - 1}`, { opacity: vis ? f(a2 * (1 - b2)) : 0, transform: `translate(0 ${f(72 * (1 - a2) - 72 * b2)})` });
+    const flick = t >= from && t < from + 0.12 && k > 0;
+    set(`sg${idx - 1}`, { opacity: t >= from && t < until && !flick ? 1 : 0 });
+  });
+  const blink = t >= T.press && t < T.press + 1.2 ? (Math.floor((t - T.press) * 8) % 2 ? 0.25 : 1) : 1;
+  set("ledDot", { opacity: f(blink) }); set("signDot", { opacity: f(blink) });
 
   // ── end card builds once we are through the window
   [["e1", 0.0], ["e2", 0.15], ["e3", 0.4], ["e4", 0.6], ["e5", 0.75]].forEach(([id, d]) => {

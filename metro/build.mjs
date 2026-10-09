@@ -29,6 +29,10 @@ for (const [name, c] of Object.entries(CH)) {
 }
 // Narsist's right sleeve cuff, redrawn over his raised arm
 jobs.push({ src: K, out: A("narsist_cuff.svg"), rect: [13305, 7244, 13428, 7340], prefix: "nc", tol: 4, only: [[13313.21, 7251.04, 13419.79, 7332.58]] });
+// Zeynep's hand gripping a cup (from Kafein), reused for Narsist's perfume
+jobs.push({ src: K, out: A("grip_hand.svg"), rect: [18630, 7300, 18870, 7495], prefix: "gh", tol: 4, only: [
+  [18778.58, 7346.64, 18860.67, 7429.95], [18699.46, 7318.6, 18823.23, 7442.22], [18664.03, 7316.35, 18825.82, 7432.06],
+  [18749.72, 7348.48, 18822.45, 7370.7], [18752.39, 7362.66, 18819.1, 7393.51], [18642.75, 7379.49, 18817.98, 7487.42]] });
 // ADHD's sleeve cuff, redrawn over her new (animated) arm
 jobs.push({ src: K, out: A("adhd_cuff.svg"), rect: [14120, 7340, 14240, 7412], prefix: "ac", tol: 4, only: [[14127.32, 7344.31, 14232.85, 7406.91]] });
 jobs.push({ src: K, out: A("car.svg"), rect: [11790, 5820, 27200, 8845], cut: bgCuts, drop: DROP, prefix: "car", tol: 4 });
@@ -54,7 +58,7 @@ function flatten(file) {
   });
   return { vb, body: body.replace(/\s+\n/g, "\n") };
 }
-const files = [...Object.keys(CH), "car", "narsist_cuff", "adhd_cuff"];
+const files = [...Object.keys(CH), "car", "narsist_cuff", "adhd_cuff", "grip_hand"];
 const extra = ["cat_sit"];
 const own = ["cage_pouf"]; // already in assets/
 const out = {};
